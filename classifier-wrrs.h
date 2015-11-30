@@ -20,6 +20,19 @@
 #include <stdio.h>
 #include <string.h>
 
+/**
+ * stl list
+ * */
+#include <iostream>
+#include <list>
+#include <algorithm>
+
+using namespace std;
+
+typedef list<int> INTLIST;
+
+bool findInList(INTLIST l, int key);
+
 /// SearchTable START
 #define ST_OK				1
 #define ST_ERR				-1
@@ -102,7 +115,7 @@ private:
     int PodId;
     int InPodId;
     int NodeType;
-    int aggShift;  			/// edge使用该变量，记录该pod第一个agg switch的id。
+    int aggShift;  			/// agg,edge使用该变量，记录该pod第一个agg switch的id。
 
     int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
     int hostNumInPod;           	/// (k决定)
@@ -112,7 +125,8 @@ private:
 
     int numForNotTag;
 
-
+    bool flowBased;
+    INTLIST * pathList;		/// 用于记录各个流下一条的位置
     //bool podRR;
     //bool hostRR;
     //bool oneRR;

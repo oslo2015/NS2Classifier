@@ -124,6 +124,9 @@ WRRSClassifier::WRRSClassifier()
     wrrLast = NULL;
     fatK = -1;
     numForNotTag = -1;
+
+    flowBased = false;
+    pathList = NULL;
     //podRR = false;
     //hostRR = false;
     //oneRR = false;
@@ -561,3 +564,16 @@ int WRRSClassifier::command(int argc, const char*const* argv)
     }
     return (Classifier::command(argc, argv));
 }
+
+
+
+
+bool findInList(INTLIST l, int key)
+{
+	INTLIST::iterator it = find(l.begin(), l.end(), key);
+	if(l.end() == it)
+		return false;
+	return true;
+
+}
+
