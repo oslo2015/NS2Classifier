@@ -408,6 +408,12 @@ int WRRSClassifier::findFidAmongList_index(int fid) {
 	return i;
 }
 
+void WRRSClassifier::findNextIdByFid(int fid) {
+	Tcl& tcl = Tcl::instance();
+	int findPath = findFidAmongList_index(fid / 1000);
+	tcl.resultf("%d", aggShift + findPath);
+}
+
 void WRRSClassifier::printNodeInfo() {
 	if (SWITCH_HOST == NodeType) {
 		printf("\nHost:\nnode id : %d\n", NodeId);
@@ -547,6 +553,12 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 		if (strcmp(argv[1], "removeFlowId") == 0) {
 			int key = atoi(argv[2]);
 			removeFlowId(key);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "removeFlowId") == 0) {
+			int key = atoi(argv[2]);
+			findNextIdByFid(key);
 			return (TCL_OK);
 		}
 

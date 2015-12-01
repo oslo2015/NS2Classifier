@@ -1,17 +1,16 @@
 /*
 
-实现：
-(1)fat tree 拓扑， 用 k 值来设置。
-(2)实现packet-base转发。
-(3) wrrLast[]初始化时，做了优化，不是都是0，而是类wrr的初始化。
-例如当k = 4时， 初始化为  0 1 0 1
+ 实现：
+ (1)fat tree 拓扑， 用 k 值来设置。
+ (2)实现packet-base转发。
+ (3) wrrLast[]初始化时，做了优化，不是都是0，而是类wrr的初始化。
+ 例如当k = 4时， 初始化为  0 1 0 1
 
 
-缺陷：
+ 缺陷：
 
 
-*/
-
+ */
 
 #include "config.h"
 #include "packet.h"
@@ -41,25 +40,24 @@ int findMinSizeAmongList_index(INTLIST * llist, int listNum);
 #define ST_NOTFOUND			-2
 
 class SearchTable {
-public :
-    SearchTable();
-    ~SearchTable();
-    int insertTable(int key);
-    int findKey(int key);
-    int removeTable(int key);
-    int clearTable();
-    int reallocTable(int newNum);
-    void printTable();
+public:
+	SearchTable();
+	~SearchTable();
+	int insertTable(int key);
+	int findKey(int key);
+	int removeTable(int key);
+	int clearTable();
+	int reallocTable(int newNum);
+	void printTable();
 
 protected:
-    int top;
-    int totalNum;
+	int top;
+	int totalNum;
 
 private:
-    int *table;
+	int *table;
 };
 /// SearchTable END
-
 
 #define SWITCH_HOST     1
 #define SWITCH_CORE     2
@@ -74,69 +72,71 @@ private:
 #define HOSTRR			2
 #define ONERR			3
 
-
-class WRRSClassifier : public Classifier {
-public :
-    WRRSClassifier();
+class WRRSClassifier: public Classifier {
+public:
+	WRRSClassifier();
 	~WRRSClassifier();
-    void recv(Packet* p, Handler*h);
-    virtual int classify(Packet *);
+	void recv(Packet* p, Handler*h);
+	virtual int classify(Packet *);
 
-    /// packet tag
-    void insertTag(int tag)    {
-        packetTag.insertTable(tag);
-    }
-    void removeTag(int tag)    {
-        packetTag.removeTable(tag);
-    }
+	/// packet tag
+	void insertTag(int tag) {
+		packetTag.insertTable(tag);
+	}
+	void removeTag(int tag) {
+		packetTag.removeTable(tag);
+	}
 
-    void setNodeInfo(int podid, int inpodid, int type, int agg);
-    void setTagSection(int sec);
-    void setNodeType(int type) {NodeType = type;}
-    void setFlowBased();		/// 设置 flow-based scheduling
-    void setUnFlowBased();		/// 设置 packet-based scheduling
-    void printNodeInfo();
-    void initLast();
+	void setNodeInfo(int podid, int inpodid, int type, int agg);
+	void setTagSection(int sec);
+	void setNodeType(int type) {
+		NodeType = type;
+	}
+	void setFlowBased();		/// 设置 flow-based scheduling
+	void setUnFlowBased();		/// 设置 packet-based scheduling
+	void printNodeInfo();
+	void initLast();
 
-    int addFlowId(int fid);
-    void removeFlowId(int fid);
-    int findFidAmongList_index(int fid);
-    //void setRRSTD(int lastType);
+	int addFlowId(int fid);
+	void removeFlowId(int fid);
+	int findFidAmongList_index(int fid);
+	void findNextIdByFid(int fid);	/// 通过c++向tcl传递结果
+	//void setRRSTD(int lastType);
 
 protected:
 
-    virtual int command( int argc, const char*const* argv);
-    virtual int addrToPodId( int addr);
-    virtual int addrToSubnetId( int addr);
-    int fatTreeK( int k);
+	virtual int command(int argc, const char* const * argv);
+	virtual int addrToPodId(int addr);
+	virtual int addrToSubnetId(int addr);
+	int fatTreeK(int k);
 
-    int schedule(int podid, int fid, int addr);
-    int nextWRR(int rrNum, int MOL);
+	int schedule(int podid, int fid, int addr);
+	int nextWRR(int rrNum, int MOL);
 
-    /// packet tag
-    SearchTable packetTag;
+	/// packet tag
+	SearchTable packetTag;
 
 private:
-    int NodeId;
+	int NodeId;
 
-    int PodId;
-    int InPodId;
-    int NodeType;
-    int aggShift;  			/// agg,edge使用该变量，记录该pod第一个agg switch的id。
+	int PodId;
+	int InPodId;
+	int NodeType;
+	int aggShift;  			/// agg,edge使用该变量，记录该pod第一个agg switch的id。
 
-    int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
-    int hostNumInPod;           	/// (k决定)
-    int eachSide;                   /// (k决定)
-    int *wrrLast;                   ///(k决定)
-    int fatK;                       ///(k决定)
+	int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
+	int hostNumInPod;           	/// (k决定)
+	int eachSide;                   /// (k决定)
+	int *wrrLast;                   ///(k决定)
+	int fatK;                       ///(k决定)
 
-    int numForNotTag;
+	int numForNotTag;
 
-    bool flowBased;
-    INTLIST * pathList;		/// 用于记录各个流下一条的位置
-    int pathListNum;
-    //bool podRR;
-    //bool hostRR;
-    //bool oneRR;
-    int 	RRNum;
+	bool flowBased;
+	INTLIST * pathList;		/// 用于记录各个流下一条的位置
+	int pathListNum;
+	//bool podRR;
+	//bool hostRR;
+	//bool oneRR;
+	int RRNum;
 };
