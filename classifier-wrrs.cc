@@ -184,8 +184,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 		int p_addr = iph->daddr() - hostShift;
 		int p_podid = addrToPodId(p_addr);
 
-		if (p_podid != PodId)    /// 目的地址不在本pod， upstream。
-				{
+		if (p_podid != PodId) {	/// 目的地址不在本pod， upstream。
 			int nextNode = schedule(p_podid, p_fid, p_addr);
 			NsObject* node = NULL;
 			Tcl& tcl = Tcl::instance();
@@ -195,8 +194,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 			//获取链路nid- nextDst对象的指针
 			node = (NsObject*) TclObject::lookup(tcl.result());
 			node->recv(p, h);
-		} else     /// 目的地址在本pod，默认的路由即可(downStream)。
-		{
+		} else {	/// 目的地址在本pod，默认的路由即可(downStream)。
 			Classifier::recv(p, h);
 		}
 
@@ -211,8 +209,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 		int p_podid = addrToPodId(p_addr);
 		int p_subnetid = addrToSubnetId(p_addr);
 
-		if (p_podid != PodId)    /// 目的地址不在本pod， upstream。
-				{
+		if (p_podid != PodId) {	 /// 目的地址不在本pod， upstream。
 			int nextNode = schedule(p_podid, p_fid, p_addr);
 			NsObject* node = NULL;
 			Tcl& tcl = Tcl::instance();
@@ -222,8 +219,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 			//获取链路nid- nextDst对象的指针
 			node = (NsObject*) TclObject::lookup(tcl.result());
 			node->recv(p, h);
-		} else if (InPodId != p_subnetid)     /// 目的地址不在本edge switch， upstream。
-				{
+		} else if (InPodId != p_subnetid) {	 /// 目的地址不在本edge switch， upstream。
 			int nextNode = schedule(p_podid, p_fid, p_addr);
 			NsObject* node = NULL;
 			Tcl& tcl = Tcl::instance();
@@ -233,8 +229,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 			//获取链路nid- nextDst对象的指针
 			node = (NsObject*) TclObject::lookup(tcl.result());
 			node->recv(p, h);
-		} else     /// 目的地址与该edge switch直接相连，默认路由即可(downStream)。
-		{
+		} else {	/// 目的地址与该edge switch直接相连，默认路由即可(downStream)。
 			Classifier::recv(p, h);
 		}
 	}
@@ -245,7 +240,6 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 		if (SWITCH_NC != NodeType) {
 			printf("%d\n", NodeType);
 		}
-
 		Classifier::recv(p, h);
 	}
 }
@@ -268,8 +262,7 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 	/// edge switch
 	else if (SWITCH_EDGE == NodeType) {
 		if (numForNotTag == eachSide) {
-			//int aa = nextWRR(addr, eachSide);
-			//next = aggShift + aa;
+			/// 每条路都可用
 			next = aggShift + nextWRR(addr, eachSide);
 			//printf("%d,\t%d,\t%d\n", aa, NodeId, addr);
 		} else {
