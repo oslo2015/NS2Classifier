@@ -108,7 +108,7 @@ WRRSClassifier::WRRSClassifier() {
 
 	flowBased = false;
 	pathList = NULL;
-	eachPathNum = -1;
+	pathListNum = -1;
 	//podRR = false;
 	//hostRR = false;
 	//oneRR = false;
@@ -256,15 +256,27 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 
 	/// agg switch直接Round-Robin
 	if (SWITCH_AGG == NodeType) {
-		next = InPodId * eachSide + nextWRR(addr, eachSide);
+		if (true == flowBased) {
+			int findPath = findFidAmongList_index(fid / 1000);
+			next = aggShift + findPath;
+		} else {
+			next = InPodId * eachSide + nextWRR(addr, eachSide);
+		}
+
 	}
 
 	/// edge switch
 	else if (SWITCH_EDGE == NodeType) {
 		if (numForNotTag == eachSide) {
 			/// 每条路都可用
-			next = aggShift + nextWRR(addr, eachSide);
-			//printf("%d,\t%d,\t%d\n", aa, NodeId, addr);
+			if (true == flowBased) {
+				int findPath = findFidAmongList_index(fid / 1000);
+				next = aggShift + findPath;
+			} else {
+				next = aggShift + nextWRR(addr, eachSide);
+				//printf("%d,\t%d,\t%d\n", aa, NodeId, addr);
+			}
+
 		} else {
 			if (ST_NOTFOUND == packetTag.findKey(fid)) {
 				next = aggShift + nextWRR(addr, numForNotTag);
@@ -281,7 +293,7 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 
 void WRRSClassifier::setTagSection(int sec) {
 	numForNotTag = eachSide - sec;
-	///printf("%d----%d\n", numForNotTag, sec);
+///printf("%d----%d\n", numForNotTag, sec);
 }
 
 void WRRSClassifier::setNodeInfo(int podid, int inpodid, int type, int agg) {
@@ -289,22 +301,26 @@ void WRRSClassifier::setNodeInfo(int podid, int inpodid, int type, int agg) {
 	InPodId = inpodid;
 	NodeType = type;
 	aggShift = agg;
-	///printf("%d,\t%d\n", aggShift, NodeId);
+///printf("%d,\t%d\n", aggShift, NodeId);
 }
 
 void WRRSClassifier::setFlowBased() {
 	flowBased = true;
-	eachPathNum = eachSide;
-	pathList = new INTLIST[eachPathNum];
+	pathListNum = eachSide;
+	pathList = new INTLIST[pathListNum];
 }
 
 void WRRSClassifier::setUnFlowBased() {
 	flowBased = false;
-	eachPathNum = -1;
 	if (NULL != pathList) {
+		int i;
+		for (i = 0; i < pathListNum; ++i) {
+			pathList[i].clear();
+		}
 		delete[] pathList;
 		pathList = NULL;
 	}
+	pathListNum = -1;
 }
 
 void WRRSClassifier::initLast() {
@@ -344,6 +360,53 @@ void WRRSClassifier::initLast() {
  initLast();
  }
  */
+
+int WRRSClassifier::addFlowId(int fid) {
+	if (false == flowBased) {
+		printf("not flow based but still add fid!");
+		return -1;
+	} else {
+		int index = findMinSizeAmongList_index(pathList, pathListNum);
+		if (-1 == index) {
+			printf("flow based path record wrong!");
+			return -1;
+		}
+		pathList[index].push_back(fid);
+		return index;
+		/// printf("!");
+	}
+}
+
+void WRRSClassifier::removeFlowId(int fid) {
+	if (false == flowBased)
+		printf("not flow based but still add fid!");
+	else if (NULL == pathList || pathListNum <= 0)
+		printf("null pointer or wrong listNum");
+	else {
+		int i;
+		for (i = 0; i < pathListNum; ++i) {
+			if (true == findInList(pathList[i], fid))
+				pathList[i].remove(fid);
+		}
+	}
+}
+
+int WRRSClassifier::findFidAmongList_index(int fid) {
+	if (false == flowBased) {
+		printf("not flow based but still add fid!");
+		return -1;
+	} else if (NULL == pathList || pathListNum <= 0) {
+		printf("null pointer or wrong listNum");
+		return -1;
+	}
+
+	int i;
+	for (i = 0; i < pathListNum; ++i) {
+		if (true == findInList(pathList[i], fid))
+			return i;
+	}
+	return i;
+}
 
 void WRRSClassifier::printNodeInfo() {
 	if (SWITCH_HOST == NodeType) {
@@ -432,7 +495,7 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 	 $classifier resetLast
 
 	 */
-	//Tcl& tcl = Tcl::instance();
+//Tcl& tcl = Tcl::instance();
 	if (argc == 2) {
 		if (strcmp(argv[1], "printNodeInfo") == 0) {
 			printNodeInfo();
@@ -475,6 +538,18 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
+		if (strcmp(argv[1], "addFlowId") == 0) {
+			int key = atoi(argv[2]);
+			addFlowId(key);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "removeFlowId") == 0) {
+			int key = atoi(argv[2]);
+			removeFlowId(key);
+			return (TCL_OK);
+		}
+
 		/*
 		 if (strcmp(argv[1], "setRRType") == 0)
 		 {
@@ -501,6 +576,20 @@ bool findInList(INTLIST l, int key) {
 	if (l.end() == it)
 		return false;
 	return true;
+}
 
+int findMinSizeAmongList_index(INTLIST * llist, int listNum) {
+	if (NULL == llist || listNum <= 0)
+		return -1;
+	int min = llist[0].size();
+	int index = 0;
+	int i;
+	for (i = 1; i < listNum; ++i) {
+		if (llist[i].size() < min) {
+			min = llist[i].size();
+			index = i;
+		}
+	}
+	return index;
 }
 

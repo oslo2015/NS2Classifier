@@ -32,6 +32,7 @@ using namespace std;
 typedef list<int> INTLIST;
 
 bool findInList(INTLIST l, int key);
+int findMinSizeAmongList_index(INTLIST * llist, int listNum);
 
 /// SearchTable START
 #define ST_OK				1
@@ -96,6 +97,10 @@ public :
     void setUnFlowBased();		/// 设置 packet-based scheduling
     void printNodeInfo();
     void initLast();
+
+    int addFlowId(int fid);
+    void removeFlowId(int fid);
+    int findFidAmongList_index(int fid);
     //void setRRSTD(int lastType);
 
 protected:
@@ -129,7 +134,7 @@ private:
 
     bool flowBased;
     INTLIST * pathList;		/// 用于记录各个流下一条的位置
-    int eachPathNum;
+    int pathListNum;
     //bool podRR;
     //bool hostRR;
     //bool oneRR;
