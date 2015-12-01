@@ -72,6 +72,9 @@ private:
 #define HOSTRR			2
 #define ONERR			3
 
+#define FLOWBASED		1
+#define NOTFLOWBASED	0
+
 class WRRSClassifier: public Classifier {
 public:
 	WRRSClassifier();
@@ -92,8 +95,7 @@ public:
 	void setNodeType(int type) {
 		NodeType = type;
 	}
-	void setFlowBased();		/// 设置 flow-based scheduling
-	void setUnFlowBased();		/// 设置 packet-based scheduling
+	void setFlowBased(int flag);/// 设置 flow-based scheduling, flag== 1 设置成 flowbased
 	void printNodeInfo();
 	void initLast();
 

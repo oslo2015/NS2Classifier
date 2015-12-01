@@ -304,23 +304,24 @@ void WRRSClassifier::setNodeInfo(int podid, int inpodid, int type, int agg) {
 ///printf("%d,\t%d\n", aggShift, NodeId);
 }
 
-void WRRSClassifier::setFlowBased() {
-	flowBased = true;
-	pathListNum = eachSide;
-	pathList = new INTLIST[pathListNum];
-}
-
-void WRRSClassifier::setUnFlowBased() {
-	flowBased = false;
-	if (NULL != pathList) {
-		int i;
-		for (i = 0; i < pathListNum; ++i) {
-			pathList[i].clear();
+void WRRSClassifier::setFlowBased(int flag) {
+	if (FLOWBASED == flag) {
+		flowBased = true;
+		pathListNum = eachSide;
+		pathList = new INTLIST[pathListNum];
+	} else if (NOTFLOWBASED == flag) {
+		flowBased = false;
+		if (NULL != pathList) {
+			int i;
+			for (i = 0; i < pathListNum; ++i) {
+				pathList[i].clear();
+			}
+			delete[] pathList;
+			pathList = NULL;
 		}
-		delete[] pathList;
-		pathList = NULL;
+		pathListNum = -1;
 	}
-	pathListNum = -1;
+
 }
 
 void WRRSClassifier::initLast() {
@@ -541,6 +542,12 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 		if (strcmp(argv[1], "setNodeType") == 0) {
 			int key = atoi(argv[2]);
 			setNodeType(key);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "setFlowBased") == 0) {
+			int key = atoi(argv[2]);
+			setFlowBased(key);
 			return (TCL_OK);
 		}
 
