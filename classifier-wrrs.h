@@ -77,7 +77,7 @@ private:
 class WRRSClassifier : public Classifier {
 public :
     WRRSClassifier();
-    ~WRRSClassifier();
+	~WRRSClassifier();
     void recv(Packet* p, Handler*h);
     virtual int classify(Packet *);
 
@@ -92,6 +92,8 @@ public :
     void setNodeInfo(int podid, int inpodid, int type, int agg);
     void setTagSection(int sec);
     void setNodeType(int type) {NodeType = type;}
+    void setFlowBased();		/// 设置 flow-based scheduling
+    void setUnFlowBased();		/// 设置 packet-based scheduling
     void printNodeInfo();
     void initLast();
     //void setRRSTD(int lastType);
@@ -127,6 +129,7 @@ private:
 
     bool flowBased;
     INTLIST * pathList;		/// 用于记录各个流下一条的位置
+    int eachPathNum;
     //bool podRR;
     //bool hostRR;
     //bool oneRR;
