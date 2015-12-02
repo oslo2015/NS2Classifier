@@ -382,6 +382,7 @@ int WRRSClassifier::addFlowId(int fid) {
 }
 
 void WRRSClassifier::removeFlowId(int fid) {
+	int index = -1;
 	if (false == flowBased)
 		printf("not flow based but still add fid!");
 	else if (NULL == pathList || pathListNum <= 0)
@@ -391,10 +392,13 @@ void WRRSClassifier::removeFlowId(int fid) {
 		for (i = 0; i < pathListNum; ++i) {
 			if (true == findInList(pathList[i], fid)) {
 				pathList[i].remove(fid);
-				return;
+				index = i;
+				break;
 			}
 		}
 	}
+	Tcl& tcl = Tcl::instance();
+	tcl.resultf("%d", index);
 }
 
 int WRRSClassifier::findFidAmongList_index(int fid) {
