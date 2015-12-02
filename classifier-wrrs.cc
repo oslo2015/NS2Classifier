@@ -506,6 +506,11 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 	 $classifier printNodeInfo
 	 $classifier resetLast
 
+	 $classifier setFlowBased	0/1
+	 $classifier addFlowId		fid
+	 $classifier removeFlowId	fid
+	 $classifier findNextIdByFid	fid
+
 	 */
 //Tcl& tcl = Tcl::instance();
 	if (argc == 2) {
@@ -568,7 +573,7 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
-		if (strcmp(argv[1], "removeFlowId") == 0) {
+		if (strcmp(argv[1], "findNextIdByFid") == 0) {
 			int key = atoi(argv[2]);
 			findNextIdByFid(key);
 			return (TCL_OK);
