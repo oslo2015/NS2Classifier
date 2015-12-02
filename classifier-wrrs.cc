@@ -406,13 +406,18 @@ int WRRSClassifier::findFidAmongList_index(int fid) {
 		if (true == findInList(pathList[i], fid))
 			return i;
 	}
-	return i;
+	return -1;
 }
 
 void WRRSClassifier::findNextIdByFid(int fid) {
 	Tcl& tcl = Tcl::instance();
 	int findPath = findFidAmongList_index(fid / 1000);
-	tcl.resultf("%d", aggShift + findPath);
+	if (-1 == findPath) {
+		tcl.resultf("%d", -1);
+	} else {
+		tcl.resultf("%d", aggShift + findPath);
+	}
+
 }
 
 void WRRSClassifier::printNodeInfo() {
