@@ -377,7 +377,7 @@ int WRRSClassifier::addFlowId(int fid) {
 		/// printf("!");
 	}
 	Tcl& tcl = Tcl::instance();
-	tcl.resultf("%d", findPath);
+	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
 	return findPath;
 }
 
@@ -398,11 +398,7 @@ void WRRSClassifier::removeFlowId(int fid) {
 		}
 	}
 	Tcl& tcl = Tcl::instance();
-	if (-1 == findPath) {
-		tcl.resultf("%d", -1);
-	} else {
-		tcl.resultf("%d", aggShift + findPath);
-	}
+	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
 }
 
 int WRRSClassifier::findFidAmongList_index(int fid) {
