@@ -363,26 +363,26 @@ void WRRSClassifier::initLast() {
  */
 
 int WRRSClassifier::addFlowId(int fid) {
-	int index = -1;
+	int findPath = -1;
 	if (false == flowBased) {
 		printf("not flow based but still add fid!");
-		index = -1;
+		findPath = -1;
 	} else {
-		index = findMinSizeAmongList_index(pathList, pathListNum);
-		if (-1 == index) {
+		findPath = findMinSizeAmongList_index(pathList, pathListNum);
+		if (-1 == findPath) {
 			printf("flow based path record wrong!");
 		} else {
-			pathList[index].push_back(fid);
+			pathList[findPath].push_back(fid);
 		}
 		/// printf("!");
 	}
 	Tcl& tcl = Tcl::instance();
-	tcl.resultf("%d", index);
-	return index;
+	tcl.resultf("%d", findPath);
+	return findPath;
 }
 
 void WRRSClassifier::removeFlowId(int fid) {
-	int index = -1;
+	int findPath = -1;
 	if (false == flowBased)
 		printf("not flow based but still add fid!");
 	else if (NULL == pathList || pathListNum <= 0)
@@ -392,13 +392,17 @@ void WRRSClassifier::removeFlowId(int fid) {
 		for (i = 0; i < pathListNum; ++i) {
 			if (true == findInList(pathList[i], fid)) {
 				pathList[i].remove(fid);
-				index = i;
+				findPath = i;
 				break;
 			}
 		}
 	}
 	Tcl& tcl = Tcl::instance();
-	tcl.resultf("%d", index);
+	if (-1 == findPath) {
+		tcl.resultf("%d", -1);
+	} else {
+		tcl.resultf("%d", aggShift + findPath);
+	}
 }
 
 int WRRSClassifier::findFidAmongList_index(int fid) {
