@@ -257,7 +257,7 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 	/// agg switch直接Round-Robin
 	if (SWITCH_AGG == NodeType) {
 		if (true == flowBased) {
-			int findPath = findFidAmongList_index(fid / 1000);
+			int findPath = findFidAmongList_index(fid);
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
 			next = InPodId * eachSide + nextWRR(addr, eachSide);
@@ -270,8 +270,9 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 		if (numForNotTag == eachSide) {
 			/// 每条路都可用
 			if (true == flowBased) {
-				int findPath = findFidAmongList_index(fid / 1000);
+				int findPath = findFidAmongList_index(fid);
 				next = aggShift + (-1 == findPath ? 0 : findPath);
+				//printf("fid = %d, next = %d\n", fid, next);
 			} else {
 				next = aggShift + nextWRR(addr, eachSide);
 				//printf("%d,\t%d,\t%d\n", aa, NodeId, addr);
@@ -447,6 +448,8 @@ void WRRSClassifier::printNodeInfo() {
 		printf("eachSide : %d\n", eachSide);
 		printf("fatK : %d\n", fatK);
 		printf("numForNotTag : %d\n", numForNotTag);
+		printf("flowBased : %d\n", flowBased);
+		printf("pathListNum : %d\n", pathListNum);
 		int nn = fatK / 2;
 		int cal1 = (NodeId - nn * nn) / nn;
 		int cal2 = (NodeId - nn * nn) % nn;
@@ -472,6 +475,8 @@ void WRRSClassifier::printNodeInfo() {
 		printf("fatK : %d\n", fatK);
 		printf("aggShift : %d\n", aggShift);
 		printf("numForNotTag : %d\n", numForNotTag);
+		printf("flowBased : %d\n", flowBased);
+		printf("pathListNum : %d\n", pathListNum);
 		int nn = fatK / 2;
 		int cal1 = (NodeId - nn * nn - fatK * nn) / nn;
 		int cal2 = (NodeId - nn * nn) % nn;
