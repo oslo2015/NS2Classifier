@@ -259,9 +259,10 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 	/// agg switch直接Round-Robin
 	if (SWITCH_AGG == NodeType) {
 		if (true == flowBased) {
-			int findPath = findFidAmongList_index(fid);
-			if (findPath == -1)
+			int findPath = findFidIndexAmongLists(fid);
+			if (findPath == -1) {
 				printf("flowBased not found\n");
+			}
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
 			next = InPodId * eachSide + nextWRR(addr, eachSide);
@@ -274,7 +275,7 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 		if (numForNotTag == eachSide) {
 			/// 每条路都可用
 			if (true == flowBased) {
-				int findPath = findFidAmongList_index(fid);
+				int findPath = findFidIndexAmongLists(fid);
 				next = aggShift + (-1 == findPath ? 0 : findPath);
 				//printf("fid = %d, next = %d\n", fid, next);
 			} else {
@@ -373,11 +374,9 @@ int WRRSClassifier::addFlowId(int fid) {
 		printf("not flow based but still add fid!");
 		findPath = -1;
 	} else {
-		findPath = findMinSizeAmongList_index(pathList, pathListNum);
+		findPath = addAmongLists(pathList, pathListNum, fid);
 		if (-1 == findPath) {
-			printf("flow based path record wrong!");
-		} else {
-			pathList[findPath].push_back(fid);
+			printf("flow based path add record wrong! nid = %d\n", NodeId);
 		}
 		/// printf("!");
 	}
@@ -393,20 +392,16 @@ void WRRSClassifier::removeFlowId(int fid) {
 	else if (NULL == pathList || pathListNum <= 0)
 		printf("null pointer or wrong listNum");
 	else {
-		int i;
-		for (i = 0; i < pathListNum; ++i) {
-			if (true == findInList(pathList[i], fid)) {
-				pathList[i].remove(fid);
-				findPath = i;
-				break;
-			}
+		findPath = removeAmongLists(pathList, pathListNum, fid);
+		if (-1 == findPath) {
+			printf("flow based path remove record wrong! nid = %d\n", NodeId);
 		}
 	}
 	Tcl& tcl = Tcl::instance();
 	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
 }
 
-int WRRSClassifier::findFidAmongList_index(int fid) {
+int WRRSClassifier::findFidIndexAmongLists(int fid) {
 	if (false == flowBased) {
 		printf("not flow based but still add fid!");
 		return -1;
@@ -415,17 +410,12 @@ int WRRSClassifier::findFidAmongList_index(int fid) {
 		return -1;
 	}
 
-	int i;
-	for (i = 0; i < pathListNum; ++i) {
-		if (true == findInList(pathList[i], fid))
-			return i;
-	}
-	return -1;
+	return findIndexAmongLists(pathList, pathListNum, fid);
 }
 
 void WRRSClassifier::findNextIdByFid(int fid) {
 	Tcl& tcl = Tcl::instance();
-	int findPath = findFidAmongList_index(fid / 1000);
+	int findPath = findFidIndexAmongLists(fid / 1000);
 	if (-1 == findPath) {
 		tcl.resultf("%d", -1);
 	} else {
@@ -625,9 +615,12 @@ bool findInList(INTLIST l, int key) {
 	return true;
 }
 
-int findMinSizeAmongList_index(INTLIST * llist, int listNum) {
-	if (NULL == llist || listNum <= 0)
+int findMinSizeIndexAmongList(INTLIST * llist, int listNum) {
+	if (NULL == llist || listNum <= 0) {
+		printf("lists wrong\n");
 		return -1;
+	}
+
 	int min = llist[0].size();
 	int index = 0;
 	int i;
@@ -640,3 +633,37 @@ int findMinSizeAmongList_index(INTLIST * llist, int listNum) {
 	return index;
 }
 
+int addAmongLists(INTLIST * llist, int listNum, int key) {
+	if (NULL == llist || listNum <= 0)
+		return -1;
+	int findPath = findMinSizeIndexAmongList(llist, listNum);
+	if (-1 != findPath) {
+		llist[findPath].push_back(key);
+	}
+	return findPath;
+}
+
+int removeAmongLists(INTLIST * llist, int listNum, int key) {
+	if (NULL == llist || listNum <= 0)
+		return -1;
+	int i;
+	for (i = 0; i < listNum; ++i) {
+		if (true == findInList(llist[i], key)) {
+			llist[i].remove(key);
+			return i;
+		}
+	}
+	return -1;
+}
+
+int findIndexAmongLists(INTLIST * llist, int listNum, int key) {
+	if (NULL == llist || listNum <= 0)
+		return -1;
+	int i;
+	for (i = 0; i < listNum; ++i) {
+		if (true == findInList(llist[i], key)) {
+			return i;
+		}
+	}
+	return -1;
+}

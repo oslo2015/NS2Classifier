@@ -32,7 +32,11 @@ using namespace std;
 typedef list<int> INTLIST;
 
 bool findInList(INTLIST l, int key);
-int findMinSizeAmongList_index(INTLIST * llist, int listNum);
+int findMinSizeIndexAmongList(INTLIST * llist, int listNum);
+
+int addAmongLists(INTLIST * llist, int listNum, int key);
+int removeAmongLists(INTLIST * llist, int listNum, int key);
+int findIndexAmongLists(INTLIST * llist, int listNum, int key);
 
 /// SearchTable START
 #define ST_OK				1
@@ -102,7 +106,7 @@ public:
 
 	int addFlowId(int fid);
 	void removeFlowId(int fid);
-	int findFidAmongList_index(int fid);
+	int findFidIndexAmongLists(int fid);
 	void findNextIdByFid(int fid);	/// 通过c++向tcl传递结果
 	//void setRRSTD(int lastType);
 
