@@ -180,13 +180,14 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 	else if (SWITCH_AGG == NodeType) {
 		hdr_ip* iph = hdr_ip::access(p);    /// 获得ip包头
 		hdr_tcp *ntcp = hdr_tcp::access(p);
+		int feedBack = ntcp->isAck();
 
 		int p_fid = iph->flowid();
 		int p_addr = iph->daddr() - hostShift;
 		int p_podid = addrToPodId(p_addr);
 
 		if (p_podid != PodId) {	/// 目的地址不在本pod， upstream。
-			int nextNode = schedule(p_podid, p_fid, p_addr);
+			int nextNode = schedule(p_podid, p_fid, p_addr, feedBack);
 			NsObject* node = NULL;
 			Tcl& tcl = Tcl::instance();
 			//[Simulator instance]获取当前实例
@@ -205,6 +206,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 	else if (SWITCH_EDGE == NodeType) {
 		hdr_ip* iph = hdr_ip::access(p);    /// 获得ip包头
 		hdr_tcp *ntcp = hdr_tcp::access(p);
+		int feedBack = ntcp->isAck();
 
 		int p_fid = iph->flowid();
 		int p_addr = iph->daddr() - hostShift;
@@ -212,7 +214,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 		int p_subnetid = addrToSubnetId(p_addr);
 
 		if (p_podid != PodId) {	 /// 目的地址不在本pod， upstream。
-			int nextNode = schedule(p_podid, p_fid, p_addr);
+			int nextNode = schedule(p_podid, p_fid, p_addr, feedBack);
 			NsObject* node = NULL;
 			Tcl& tcl = Tcl::instance();
 			//[Simulator instance]获取当前实例
@@ -222,7 +224,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 			node = (NsObject*) TclObject::lookup(tcl.result());
 			node->recv(p, h);
 		} else if (InPodId != p_subnetid) {	 /// 目的地址不在本edge switch， upstream。
-			int nextNode = schedule(p_podid, p_fid, p_addr);
+			int nextNode = schedule(p_podid, p_fid, p_addr, feedBack);
 			NsObject* node = NULL;
 			Tcl& tcl = Tcl::instance();
 			//[Simulator instance]获取当前实例
@@ -253,15 +255,15 @@ int WRRSClassifier::nextWRR(int rrNum, int MOL) {
 }
 
 /// upstreams时，对switch的选择
-int WRRSClassifier::schedule(int podid, int fid, int addr) {
+int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 	int next;
 
 	/// agg switch直接Round-Robin
 	if (SWITCH_AGG == NodeType) {
 		if (true == flowBased) {
-			int findPath = findFidIndexAmongLists(fid);
+			int findPath = findFidIndexAmongLists(fid, feedBack);
 			if (findPath == -1) {
-				printf("flowBased not found\n");
+				//printf("flowBased not found, nid = %d\n", NodeId);
 			}
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
@@ -275,7 +277,7 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 		if (numForNotTag == eachSide) {
 			/// 每条路都可用
 			if (true == flowBased) {
-				int findPath = findFidIndexAmongLists(fid);
+				int findPath = findFidIndexAmongLists(fid, feedBack);
 				next = aggShift + (-1 == findPath ? 0 : findPath);
 				//printf("fid = %d, next = %d\n", fid, next);
 			} else {
@@ -381,6 +383,7 @@ int WRRSClassifier::addFlowId(int fid, int feedBack) {
 		/// printf("!");
 	}
 	Tcl& tcl = Tcl::instance();
+	//printf("findPath = %d\n", findPath);
 	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
 	return findPath;
 }

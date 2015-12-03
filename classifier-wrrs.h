@@ -126,7 +126,7 @@ protected:
 	virtual int addrToSubnetId(int addr);
 	int fatTreeK(int k);
 
-	int schedule(int podid, int fid, int addr);
+	int schedule(int podid, int fid, int addr, int feedBack);
 	int nextWRR(int rrNum, int MOL);
 
 	/// packet tag
