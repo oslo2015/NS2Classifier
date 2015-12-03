@@ -33,10 +33,12 @@ typedef list<int> INTLIST;
 
 bool findInList(INTLIST l, int key);
 int findMinSizeIndexAmongList(INTLIST * llist, int listNum);
-
 int addAmongLists(INTLIST * llist, int listNum, int key);
 int removeAmongLists(INTLIST * llist, int listNum, int key);
 int findIndexAmongLists(INTLIST * llist, int listNum, int key);
+
+int newIntLists(INTLIST * &llist, int listNum);
+int destoryIntLists(INTLIST * &llist, int &listNum);
 
 /// SearchTable START
 #define ST_OK				1
@@ -100,14 +102,21 @@ public:
 	void setNodeType(int type) {
 		NodeType = type;
 	}
-	void setFlowBased(int flag); /// 设置 flow-based scheduling, flag== 1 设置成 flowbased
 	void printNodeInfo();
 	void initLast();
 
-	int addFlowId(int fid);
-	void removeFlowId(int fid);
-	int findFidIndexAmongLists(int fid);
-	void findNextIdByFid(int fid);	/// 通过c++向tcl传递结果
+	/*	设置 flow-based scheduling,
+	 * 	flag== 1 设置成 flowbased
+	 * 	feedBack== 1 分配 pathList4fb
+	 * */
+	void setFlowBased(int flag, int feedBack);
+	/*
+	 * feedBack== 1  从pathList4fb中查找
+	 * */
+	int addFlowId(int fid, int feedBack);
+	void removeFlowId(int fid, int feedBack);
+	int findFidIndexAmongLists(int fid, int feedBack);
+	void findNextIdByFid(int fid, int feedBack);	/// 通过c++向tcl传递结果
 	//void setRRSTD(int lastType);
 
 protected:
@@ -140,8 +149,10 @@ private:
 	int numForNotTag;
 
 	bool flowBased;
-	INTLIST * pathList;		/// 用于记录各个流下一条的位置
+	INTLIST * pathList;		/// 用于记录各个流下一条的位置, tcp发送包
 	int pathListNum;
+	INTLIST * pathList4fb;		/// 用于记录各个流下一条的位置, tcp ack包
+	int pathList4fbNum;
 	//bool podRR;
 	//bool hostRR;
 	//bool oneRR;

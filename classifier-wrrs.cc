@@ -109,6 +109,8 @@ WRRSClassifier::WRRSClassifier() {
 	flowBased = false;
 	pathList = NULL;
 	pathListNum = -1;
+	pathList4fb = NULL;
+	pathList4fbNum = -1;
 	//podRR = false;
 	//hostRR = false;
 	//oneRR = false;
@@ -120,10 +122,8 @@ WRRSClassifier::~WRRSClassifier() {
 		delete[] wrrLast;
 		wrrLast = NULL;
 	}
-	if (NULL != pathList) {
-		delete[] pathList;
-		pathList = NULL;
-	}
+	destoryIntLists(pathList, pathListNum);
+	destoryIntLists(pathList4fb, pathList4fbNum);
 }
 
 /// 设置拓扑的参数
@@ -310,24 +310,21 @@ void WRRSClassifier::setNodeInfo(int podid, int inpodid, int type, int agg) {
 ///printf("%d,\t%d\n", aggShift, NodeId);
 }
 
-void WRRSClassifier::setFlowBased(int flag) {
+void WRRSClassifier::setFlowBased(int flag, int feedBack = 0) {
 	if (FLOWBASED == flag) {
 		flowBased = true;
 		pathListNum = eachSide;
-		pathList = new INTLIST[pathListNum];
+		newIntLists(pathList, pathListNum);
+		if (1 == feedBack) {
+			pathList4fbNum = eachSide;
+			newIntLists(pathList4fb, pathList4fbNum);
+		}
+
 	} else if (NOTFLOWBASED == flag) {
 		flowBased = false;
-		if (NULL != pathList) {
-			int i;
-			for (i = 0; i < pathListNum; ++i) {
-				pathList[i].clear();
-			}
-			delete[] pathList;
-			pathList = NULL;
-		}
-		pathListNum = -1;
+		destoryIntLists(pathList, pathListNum);
+		destoryIntLists(pathList4fb, pathList4fbNum);
 	}
-
 }
 
 void WRRSClassifier::initLast() {
@@ -368,13 +365,16 @@ void WRRSClassifier::initLast() {
  }
  */
 
-int WRRSClassifier::addFlowId(int fid) {
+int WRRSClassifier::addFlowId(int fid, int feedBack) {
 	int findPath = -1;
 	if (false == flowBased) {
 		printf("not flow based but still add fid!");
 		findPath = -1;
 	} else {
-		findPath = addAmongLists(pathList, pathListNum, fid);
+		if (1 == feedBack)
+			findPath = addAmongLists(pathList4fb, pathList4fbNum, fid);
+		else
+			findPath = addAmongLists(pathList, pathListNum, fid);
 		if (-1 == findPath) {
 			printf("flow based path add record wrong! nid = %d\n", NodeId);
 		}
@@ -385,14 +385,17 @@ int WRRSClassifier::addFlowId(int fid) {
 	return findPath;
 }
 
-void WRRSClassifier::removeFlowId(int fid) {
+void WRRSClassifier::removeFlowId(int fid, int feedBack) {
 	int findPath = -1;
 	if (false == flowBased)
 		printf("not flow based but still add fid!");
 	else if (NULL == pathList || pathListNum <= 0)
 		printf("null pointer or wrong listNum");
 	else {
-		findPath = removeAmongLists(pathList, pathListNum, fid);
+		if (1 == feedBack)
+			findPath = removeAmongLists(pathList4fb, pathList4fbNum, fid);
+		else
+			findPath = removeAmongLists(pathList, pathListNum, fid);
 		if (-1 == findPath) {
 			printf("flow based path remove record wrong! nid = %d\n", NodeId);
 		}
@@ -401,27 +404,33 @@ void WRRSClassifier::removeFlowId(int fid) {
 	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
 }
 
-int WRRSClassifier::findFidIndexAmongLists(int fid) {
+int WRRSClassifier::findFidIndexAmongLists(int fid, int feedBack) {
 	if (false == flowBased) {
 		printf("not flow based but still add fid!");
 		return -1;
-	} else if (NULL == pathList || pathListNum <= 0) {
-		printf("null pointer or wrong listNum");
-		return -1;
+	} else {
+		if (0 == feedBack && (NULL == pathList || pathListNum <= 0)) {
+			printf("null pointer or wrong listNum");
+			return -1;
+		}
+		if (1 == feedBack && (NULL == pathList4fb || pathList4fbNum <= 0)) {
+			printf("null pointer or wrong listNum");
+			return -1;
+		}
 	}
-
+	if (1 == feedBack)
+		return findIndexAmongLists(pathList4fb, pathList4fbNum, fid);
 	return findIndexAmongLists(pathList, pathListNum, fid);
 }
 
-void WRRSClassifier::findNextIdByFid(int fid) {
+void WRRSClassifier::findNextIdByFid(int fid, int feedBack) {
 	Tcl& tcl = Tcl::instance();
-	int findPath = findFidIndexAmongLists(fid / 1000);
+	int findPath = findFidIndexAmongLists(fid / 1000, feedBack);
 	if (-1 == findPath) {
 		tcl.resultf("%d", -1);
 	} else {
 		tcl.resultf("%d", aggShift + findPath);
 	}
-
 }
 
 void WRRSClassifier::printNodeInfo() {
@@ -563,30 +572,6 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
-		if (strcmp(argv[1], "setFlowBased") == 0) {
-			int key = atoi(argv[2]);
-			setFlowBased(key);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "addFlowId") == 0) {
-			int key = atoi(argv[2]);
-			addFlowId(key);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "removeFlowId") == 0) {
-			int key = atoi(argv[2]);
-			removeFlowId(key);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "findNextIdByFid") == 0) {
-			int key = atoi(argv[2]);
-			findNextIdByFid(key);
-			return (TCL_OK);
-		}
-
 		/*
 		 if (strcmp(argv[1], "setRRType") == 0)
 		 {
@@ -595,6 +580,35 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 		 return (TCL_OK);
 		 }
 		 */
+	} else if (argc == 4) {
+		if (strcmp(argv[1], "setFlowBased") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			setFlowBased(key, key2);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "addFlowId") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			addFlowId(key, key2);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "removeFlowId") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			removeFlowId(key, key2);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "findNextIdByFid") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			findNextIdByFid(key, key2);
+			return (TCL_OK);
+		}
+
 	} else if (argc == 6) {
 		if (strcmp(argv[1], "setNodeInfo") == 0) {
 			int podid = atoi(argv[2]);
@@ -666,4 +680,27 @@ int findIndexAmongLists(INTLIST * llist, int listNum, int key) {
 		}
 	}
 	return -1;
+}
+
+int newIntLists(INTLIST * &llist, int listNum) {
+	if (NULL != llist) {
+		printf("[ERROR] NOT release space pointed by llist!\n");
+		exit(-1);
+	}
+	if (listNum <= 0)
+		return -1;
+	llist = new INTLIST[listNum];
+	return 0;
+}
+
+int destoryIntLists(INTLIST * &llist, int &listNum) {
+	if (NULL == llist || listNum <= 0)
+		return -1;
+	int i;
+	for (i = 0; i < listNum; ++i)
+		llist[i].clear();
+	delete[] llist;
+	llist = NULL;
+	listNum = 0;
+	return 0;
 }
