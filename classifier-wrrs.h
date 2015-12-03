@@ -15,6 +15,7 @@
 #include "config.h"
 #include "packet.h"
 #include "ip.h"
+#include "tcp.h"
 #include "classifier.h"
 #include <stdio.h>
 #include <string.h>
@@ -95,7 +96,7 @@ public:
 	void setNodeType(int type) {
 		NodeType = type;
 	}
-	void setFlowBased(int flag);/// 设置 flow-based scheduling, flag== 1 设置成 flowbased
+	void setFlowBased(int flag); /// 设置 flow-based scheduling, flag== 1 设置成 flowbased
 	void printNodeInfo();
 	void initLast();
 

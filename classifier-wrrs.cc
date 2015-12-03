@@ -179,6 +179,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 	/// 该classifier所在结点是 aggregation switch。
 	else if (SWITCH_AGG == NodeType) {
 		hdr_ip* iph = hdr_ip::access(p);    /// 获得ip包头
+		hdr_tcp *ntcp = hdr_tcp::access(p);
 
 		int p_fid = iph->flowid();
 		int p_addr = iph->daddr() - hostShift;
@@ -203,6 +204,7 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 	/// 该classifier所在结点是 edge switch。
 	else if (SWITCH_EDGE == NodeType) {
 		hdr_ip* iph = hdr_ip::access(p);    /// 获得ip包头
+		hdr_tcp *ntcp = hdr_tcp::access(p);
 
 		int p_fid = iph->flowid();
 		int p_addr = iph->daddr() - hostShift;
@@ -258,6 +260,8 @@ int WRRSClassifier::schedule(int podid, int fid, int addr) {
 	if (SWITCH_AGG == NodeType) {
 		if (true == flowBased) {
 			int findPath = findFidAmongList_index(fid);
+			if (findPath == -1)
+				printf("flowBased not found\n");
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
 			next = InPodId * eachSide + nextWRR(addr, eachSide);
