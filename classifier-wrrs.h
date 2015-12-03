@@ -39,6 +39,7 @@ int findIndexAmongLists(INTLIST * llist, int listNum, int key);
 
 int newIntLists(INTLIST * &llist, int listNum);
 int destoryIntLists(INTLIST * &llist, int &listNum);
+int printIntLists(INTLIST * &llist, int &listNum);
 
 /// SearchTable START
 #define ST_OK				1

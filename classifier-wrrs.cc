@@ -199,7 +199,6 @@ void WRRSClassifier::recv(Packet* p, Handler*h) {
 		} else {	/// 目的地址在本pod，默认的路由即可(downStream)。
 			Classifier::recv(p, h);
 		}
-
 	}
 
 	/// 该classifier所在结点是 edge switch。
@@ -263,7 +262,7 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 		if (true == flowBased) {
 			int findPath = findFidIndexAmongLists(fid, feedBack);
 			if (findPath == -1) {
-				//printf("flowBased not found, nid = %d\n", NodeId);
+				printf("[agg] flowBased not found, nid = %d\n", NodeId);
 			}
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
@@ -278,17 +277,17 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 			/// 每条路都可用
 			if (true == flowBased) {
 				int findPath = findFidIndexAmongLists(fid, feedBack);
+				if (findPath == -1) {
+					printf("[edge] flowBased not found, nid = %d\n", NodeId);
+				}
 				next = aggShift + (-1 == findPath ? 0 : findPath);
-				//printf("fid = %d, next = %d\n", fid, next);
 			} else {
 				next = aggShift + nextWRR(addr, eachSide);
-				//printf("%d,\t%d,\t%d\n", aa, NodeId, addr);
 			}
 
 		} else {
 			if (ST_NOTFOUND == packetTag.findKey(fid)) {
 				next = aggShift + nextWRR(addr, numForNotTag);
-				//printf("%d\n", next);
 			} else {
 				next = aggShift + numForNotTag
 						+ nextWRR(addr, eachSide - numForNotTag);
@@ -301,7 +300,6 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 
 void WRRSClassifier::setTagSection(int sec) {
 	numForNotTag = eachSide - sec;
-///printf("%d----%d\n", numForNotTag, sec);
 }
 
 void WRRSClassifier::setNodeInfo(int podid, int inpodid, int type, int agg) {
@@ -380,10 +378,8 @@ int WRRSClassifier::addFlowId(int fid, int feedBack) {
 		if (-1 == findPath) {
 			printf("flow based path add record wrong! nid = %d\n", NodeId);
 		}
-		/// printf("!");
 	}
 	Tcl& tcl = Tcl::instance();
-	//printf("findPath = %d\n", findPath);
 	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
 	return findPath;
 }
@@ -706,4 +702,20 @@ int destoryIntLists(INTLIST * &llist, int &listNum) {
 	llist = NULL;
 	listNum = 0;
 	return 0;
+}
+
+int printIntLists(INTLIST * &llist, int &listNum) {
+	if (NULL == llist || listNum <= 0)
+		return -1;
+	int i;
+	for (i = 0; i < listNum; ++i) {
+		printf("%d : ", i);
+		INTLIST::iterator it;
+		for (it = llist[i].begin(); it != llist[i].end(); it++) {
+			printf("%d ", *it);
+		}
+		printf("\n");
+	}
+	printf("\n");
+	return 1;
 }
