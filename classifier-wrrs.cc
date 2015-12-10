@@ -261,10 +261,10 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 	if (SWITCH_AGG == NodeType) {
 		if (true == flowBased) {
 			int findPath = findFidIndexAmongLists(fid, feedBack);
-			if (findPath == -1) {
-				printf("[agg] flowBased not found, nid = %d, fid = %d\n",
-						NodeId, fid);
-			}
+			/*if (findPath == -1) {
+			 printf("[agg] flowBased not found, nid = %d, fid = %d\n",
+			 NodeId, fid);
+			 }*/
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
 			next = InPodId * eachSide + nextWRR(addr, eachSide);
@@ -278,10 +278,10 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 			/// 每条路都可用
 			if (true == flowBased) {
 				int findPath = findFidIndexAmongLists(fid, feedBack);
-				if (findPath == -1) {
-					printf("[edge] flowBased not found, nid = %d, fid = %d\n",
-							NodeId, fid);
-				}
+				/*if (findPath == -1) {
+				 printf("[edge] flowBased not found, nid = %d, fid = %d\n",
+				 NodeId, fid);
+				 }*/
 				next = aggShift + (-1 == findPath ? 0 : findPath);
 			} else {
 				next = aggShift + nextWRR(addr, eachSide);
