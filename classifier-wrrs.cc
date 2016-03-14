@@ -254,6 +254,7 @@ int WRRSClassifier::nextWRR(int rrNum, int MOL) {
 }
 
 /// upstreams时，对switch的选择
+// @param feedBack 该包是不是ack包
 int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 	int next;
 
@@ -265,6 +266,7 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 			 printf("[agg] flowBased not found, nid = %d, fid = %d\n",
 			 NodeId, fid);
 			 }*/
+			// 如果没有对应的路径， 分配一条默认的路径。
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
 			next = InPodId * eachSide + nextWRR(addr, eachSide);
@@ -405,6 +407,7 @@ void WRRSClassifier::removeFlowId(int fid, int feedBack) {
 	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
 }
 
+// @param feedBack 该包是不是ack包
 int WRRSClassifier::findFidIndexAmongLists(int fid, int feedBack) {
 	if (false == flowBased) {
 		printf("not flow based but still add fid!");
