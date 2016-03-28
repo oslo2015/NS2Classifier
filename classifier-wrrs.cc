@@ -121,7 +121,7 @@ WRRSClassifier::WRRSClassifier() {
 	linkSrcId = -1;
 	linkDstId = -1;
 	linkDstSubId = -1;
-	podNumForLFDown = -1;
+	podSeqForLFDown = -1;
 }
 
 WRRSClassifier::~WRRSClassifier() {
@@ -139,6 +139,9 @@ int WRRSClassifier::fatTreeK(int k) {
 	hostNumInPod = k * k / 4;
 	eachSide = k / 2;
 	hostShift = 5 * k * k / 4;
+
+	AGGSHIRFT = k * k / 4;
+	EDGESHIRFT = 3 * k * k / 4;
 	numForNotTag = k / 2;
 
 	if (NULL != wrrLast)
@@ -286,20 +289,13 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 			// 如果没有对应的路径， 分配一条默认的路径。
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
-			next = InPodId * eachSide + nextWRR(addr, eachSide);
 
-			if (isLinkFailure && CORE_LINK == linkFailureType) {
-				if (NodeId == linkSrcId) {
-					while (next == linkDstId) {
-						next = InPodId * eachSide + nextWRR(addr, eachSide);
-					}
-				} else {
-					if (podNumForLFDown == addr / 4) {
-						while (next == linkDstId) {
-							next = InPodId * eachSide + nextWRR(addr, eachSide);
-						}
-					}
-				}
+			if (isLinkFailure && (CORE_LINK == linkFailureType)
+					&& (NodeId == linkSrcId
+							|| podSeqForLFDown == addrToPodId(addr))) {
+				next = aggShift + nextWRR(addr, eachSide, linkDstSubId);
+			} else {
+				next = aggShift + nextWRR(addr, eachSide);
 			}
 		}
 
@@ -318,7 +314,8 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 				next = aggShift + (-1 == findPath ? 0 : findPath);
 			} else {
 				if (isLinkFailure && (AGG_LINK == linkFailureType)
-						&& (NodeId == linkSrcId || podNumForLFDown == addr / 2)) {
+						&& (NodeId == linkSrcId
+								|| podSeqForLFDown == addr / eachSide)) {
 					next = aggShift + nextWRR(addr, eachSide, linkDstSubId);
 				} else {
 					next = aggShift + nextWRR(addr, eachSide);
@@ -477,16 +474,22 @@ void WRRSClassifier::getFlowNum() {
 	tcl.resultf("%d", pathListNum);
 }
 
-void WRRSClassifier::enableLinkFailure(int linkType, int linkSrcId,
-		int linkDstId, int podNumForLFDown) {
+void WRRSClassifier::enableLinkFailure(int linkSrcId, int linkDstId) {
 	this->isLinkFailure = true;
-	this->linkFailureType = linkType;
 	this->linkSrcId = linkSrcId;
 	this->linkDstId = linkDstId;
-	this->podNumForLFDown = podNumForLFDown;
-	if (AGG_LINK == linkType) {
-		linkDstSubId = (linkDstId - eachSide * eachSide) % eachSide;
+
+	if (linkSrcId >= AGGSHIRFT && linkSrcId < EDGESHIRFT) {
+		linkFailureType = CORE_LINK;
+		linkDstSubId = (linkDstId - 0) % eachSide;
+		podSeqForLFDown = (linkSrcId - AGGSHIRFT) / eachSide;
+
+	} else if (linkSrcId >= EDGESHIRFT && linkSrcId < hostShift) {
+		linkFailureType = AGG_LINK;
+		linkDstSubId = (linkDstId - AGGSHIRFT) % eachSide;
+		podSeqForLFDown = (linkSrcId - EDGESHIRFT);
 	}
+
 }
 
 void WRRSClassifier::disableLinkFailure() {
@@ -679,6 +682,13 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
+		if (strcmp(argv[1], "enableLinkFailure") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			enableLinkFailure(key, key2);
+			return (TCL_OK);
+		}
+
 	} else if (argc == 6) {
 		if (strcmp(argv[1], "setNodeInfo") == 0) {
 			int podid = atoi(argv[2]);
@@ -689,14 +699,6 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
-		if (strcmp(argv[1], "enableLinkFailure") == 0) {
-			int key = atoi(argv[2]);
-			int key2 = atoi(argv[3]);
-			int key3 = atoi(argv[4]);
-			int key4 = atoi(argv[5]);
-			enableLinkFailure(key, key2, key3, key4);
-			return (TCL_OK);
-		}
 	}
 	return (Classifier::command(argc, argv));
 }

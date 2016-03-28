@@ -126,8 +126,8 @@ public:
 
 	void getFlowNum();
 
-	void enableLinkFailure(int linkType, int linkSrcId, int linkDstId,
-			int podNumForLFDown);
+	// 这里规定srcid比dstid大。
+	void enableLinkFailure(int linkSrcId, int linkDstId);
 	void disableLinkFailure();
 
 protected:
@@ -152,11 +152,15 @@ private:
 	int NodeType;
 	int aggShift;  			/// agg,edge使用该变量，记录该pod第一个agg switch的id。
 
-	int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
-	int hostNumInPod;           	/// (k决定)
-	int eachSide;                   /// (k决定)
+	static int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
+
+	static int AGGSHIRFT;
+	static int EDGESHIRFT;
+
+	static int hostNumInPod;           	/// (k决定)
+	static int eachSide;                   /// (k决定)
 	int *wrrLast;                   ///(k决定)
-	int fatK;                       ///(k决定)
+	static int fatK;                       ///(k决定)
 
 	int numForNotTag;
 
@@ -176,5 +180,5 @@ private:
 	int linkSrcId;
 	int linkDstId;
 	int linkDstSubId;
-	int podNumForLFDown;
+	int podSeqForLFDown;
 };
