@@ -115,6 +115,13 @@ WRRSClassifier::WRRSClassifier() {
 	//hostRR = false;
 	//oneRR = false;
 	RRNum = 0;
+
+	isLinkFailure = false;
+	linkFailureType = NON_LINK;
+	linkSrcId = -1;
+	linkDstId = -1;
+	linkDstSubId = -1;
+	podNumForLFDown = -1;
 }
 
 WRRSClassifier::~WRRSClassifier() {
@@ -253,8 +260,18 @@ int WRRSClassifier::nextWRR(int rrNum, int MOL) {
 	return next;
 }
 
+int WRRSClassifier::nextWRR(int rrNum, int MOL, int exclude) {
+	int next;
+	do {
+		next = wrrLast[rrNum] % (MOL);
+		wrrLast[rrNum] = (next + 1) % (MOL);
+	} while (next == exclude);
+	return next;
+}
+
 /// upstreams时，对switch的选择
 // @param feedBack 该包是不是ack包
+// addr = iph->daddr() - hostShift;
 int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 	int next;
 
@@ -270,11 +287,25 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
 			next = InPodId * eachSide + nextWRR(addr, eachSide);
+
+			if (isLinkFailure && CORE_LINK == linkFailureType) {
+				if (NodeId == linkSrcId) {
+					while (next == linkDstId) {
+						next = InPodId * eachSide + nextWRR(addr, eachSide);
+					}
+				} else {
+					if (podNumForLFDown == addr / 4) {
+						while (next == linkDstId) {
+							next = InPodId * eachSide + nextWRR(addr, eachSide);
+						}
+					}
+				}
+			}
 		}
 
 	}
 
-	/// edge switch
+/// edge switch
 	else if (SWITCH_EDGE == NodeType) {
 		if (numForNotTag == eachSide) {
 			/// 每条路都可用
@@ -286,9 +317,13 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 				 }*/
 				next = aggShift + (-1 == findPath ? 0 : findPath);
 			} else {
-				next = aggShift + nextWRR(addr, eachSide);
+				if (isLinkFailure && (AGG_LINK == linkFailureType)
+						&& (NodeId == linkSrcId || podNumForLFDown == addr / 2)) {
+					next = aggShift + nextWRR(addr, eachSide, linkDstSubId);
+				} else {
+					next = aggShift + nextWRR(addr, eachSide);
+				}
 			}
-
 		} else {
 			if (ST_NOTFOUND == packetTag.findKey(fid)) {
 				next = aggShift + nextWRR(addr, numForNotTag);
@@ -437,6 +472,27 @@ void WRRSClassifier::findNextIdByFid(int fid, int feedBack) {
 	}
 }
 
+void WRRSClassifier::getFlowNum() {
+	Tcl& tcl = Tcl::instance();
+	tcl.resultf("%d", pathListNum);
+}
+
+void WRRSClassifier::enableLinkFailure(int linkType, int linkSrcId,
+		int linkDstId, int podNumForLFDown) {
+	this->isLinkFailure = true;
+	this->linkFailureType = linkType;
+	this->linkSrcId = linkSrcId;
+	this->linkDstId = linkDstId;
+	this->podNumForLFDown = podNumForLFDown;
+	if (AGG_LINK == linkType) {
+		linkDstSubId = (linkDstId - eachSide * eachSide) % eachSide;
+	}
+}
+
+void WRRSClassifier::disableLinkFailure() {
+	this->isLinkFailure = false;
+}
+
 void WRRSClassifier::printNodeInfo() {
 	if (SWITCH_HOST == NodeType) {
 		printf("\nHost:\nnode id : %d\n", NodeId);
@@ -545,6 +601,16 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
+		if (strcmp(argv[1], "disableLinkFailure") == 0) {
+			disableLinkFailure();
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "getFlowNum") == 0) {
+			getFlowNum();
+			return (TCL_OK);
+		}
+
 	} else if (argc == 3) {
 		if (strcmp(argv[1], "setFatTreeK") == 0) {
 			int key = atoi(argv[2]);
@@ -620,6 +686,15 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			int type = atoi(argv[4]);
 			int agg = atoi(argv[5]);
 			setNodeInfo(podid, inpodid, type, agg);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "enableLinkFailure") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			int key3 = atoi(argv[4]);
+			int key4 = atoi(argv[5]);
+			enableLinkFailure(key, key2, key3, key4);
 			return (TCL_OK);
 		}
 	}

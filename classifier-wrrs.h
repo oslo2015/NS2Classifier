@@ -83,6 +83,10 @@ private:
 #define FLOWBASED		1
 #define NOTFLOWBASED	0
 
+#define NON_LINK		0
+#define CORE_LINK		1
+#define AGG_LINK		2
+
 class WRRSClassifier: public Classifier {
 public:
 	WRRSClassifier();
@@ -120,6 +124,12 @@ public:
 	void findNextIdByFid(int fid, int feedBack);	/// 通过c++向tcl传递结果
 	//void setRRSTD(int lastType);
 
+	void getFlowNum();
+
+	void enableLinkFailure(int linkType, int linkSrcId, int linkDstId,
+			int podNumForLFDown);
+	void disableLinkFailure();
+
 protected:
 
 	virtual int command(int argc, const char* const * argv);
@@ -129,6 +139,7 @@ protected:
 
 	int schedule(int podid, int fid, int addr, int feedBack);
 	int nextWRR(int rrNum, int MOL);
+	int nextWRR(int rrNum, int MOL, int exclude);
 
 	/// packet tag
 	SearchTable packetTag;
@@ -158,4 +169,12 @@ private:
 	//bool hostRR;
 	//bool oneRR;
 	int RRNum;
+
+	bool isLinkFailure;
+	int linkFailureType;
+	// 这里规定srcid比dstid大。
+	int linkSrcId;
+	int linkDstId;
+	int linkDstSubId;
+	int podNumForLFDown;
 };
