@@ -122,6 +122,7 @@ WRRSClassifier::WRRSClassifier() {
 	linkDstId = -1;
 	linkDstSubId = -1;
 	podSeqForLFDown = -1;
+
 }
 
 WRRSClassifier::~WRRSClassifier() {
@@ -401,16 +402,35 @@ void WRRSClassifier::initLast() {
  }
  */
 
-int WRRSClassifier::addFlowId(int fid, int feedBack) {
+int WRRSClassifier::addFlowId(int fid, int feedBack, int addr) {
 	int findPath = -1;
 	if (false == flowBased) {
 		printf("not flow based but still add fid!");
 		findPath = -1;
 	} else {
-		if (1 == feedBack)
-			findPath = addAmongLists(pathList4fb, pathList4fbNum, fid);
-		else
-			findPath = addAmongLists(pathList, pathListNum, fid);
+		bool isExclude = false;
+		if (isLinkFailure) {
+			if ((CORE_LINK == linkFailureType
+					&& podSeqForLFDown == addrToPodId(addr))
+					|| (AGG_LINK == linkFailureType
+							&& podSeqForLFDown == addr / eachSide)) {
+				isExclude = true;
+			}
+		}
+
+		if (1 == feedBack) {
+			if (!isExclude)
+				findPath = addAmongLists(pathList4fb, pathList4fbNum, fid);
+			else
+				findPath = addAmongLists(pathList4fb, pathList4fbNum, fid,
+						linkDstSubId);
+		} else {
+			if (!isExclude)
+				findPath = addAmongLists(pathList, pathListNum, fid);
+			else
+				findPath = addAmongLists(pathList, pathListNum, fid,
+						linkDstSubId);
+		}
 		if (-1 == findPath) {
 			printf("flow based path add record wrong! nid = %d\n", NodeId);
 		}
@@ -471,333 +491,371 @@ void WRRSClassifier::findNextIdByFid(int fid, int feedBack) {
 
 void WRRSClassifier::getFlowNum() {
 	Tcl& tcl = Tcl::instance();
-	tcl.resultf("%d", pathListNum);
+	if (isLinkFailure && NodeId == linkSrcId) {
+	tcl.resultf("%d", );
+} else {
+	tcl.resultf("%d", -1);
+}
+
 }
 
 void WRRSClassifier::enableLinkFailure(int linkSrcId, int linkDstId) {
-	this->isLinkFailure = true;
-	this->linkSrcId = linkSrcId;
-	this->linkDstId = linkDstId;
+this->isLinkFailure = true;
+this->linkSrcId = linkSrcId;
+this->linkDstId = linkDstId;
 
-	if (linkSrcId >= AGGSHIRFT && linkSrcId < EDGESHIRFT) {
-		linkFailureType = CORE_LINK;
-		linkDstSubId = (linkDstId - 0) % eachSide;
-		podSeqForLFDown = (linkSrcId - AGGSHIRFT) / eachSide;
+if (linkSrcId >= AGGSHIRFT && linkSrcId < EDGESHIRFT) {
+	linkFailureType = CORE_LINK;
+	linkDstSubId = (linkDstId - 0) % eachSide;
+	podSeqForLFDown = (linkSrcId - AGGSHIRFT) / eachSide;
 
-	} else if (linkSrcId >= EDGESHIRFT && linkSrcId < hostShift) {
-		linkFailureType = AGG_LINK;
-		linkDstSubId = (linkDstId - AGGSHIRFT) % eachSide;
-		podSeqForLFDown = (linkSrcId - EDGESHIRFT);
-	}
+} else if (linkSrcId >= EDGESHIRFT && linkSrcId < hostShift) {
+	linkFailureType = AGG_LINK;
+	linkDstSubId = (linkDstId - AGGSHIRFT) % eachSide;
+	podSeqForLFDown = (linkSrcId - EDGESHIRFT);
+}
 
 }
 
 void WRRSClassifier::disableLinkFailure() {
-	this->isLinkFailure = false;
+this->isLinkFailure = false;
 }
 
 void WRRSClassifier::printNodeInfo() {
-	if (SWITCH_HOST == NodeType) {
-		printf("\nHost:\nnode id : %d\n", NodeId);
-	}
+if (SWITCH_HOST == NodeType) {
+	printf("\nHost:\nnode id : %d\n", NodeId);
+}
 
-	else if (SWITCH_CORE == NodeType) {
-		printf("\ncore switch:\nnode id : %d\n", NodeId);
-	}
+else if (SWITCH_CORE == NodeType) {
+	printf("\ncore switch:\nnode id : %d\n", NodeId);
+}
 
-	else if (SWITCH_AGG == NodeType) {
-		printf("\nagg switch:\nnode id : %d\n", NodeId);
-		printf("pod id : %d\n", PodId);
-		printf("in pod id : %d\n", InPodId);
-		printf("hostShift : %d\n", hostShift);
-		printf("hostNumInPod : %d\n", hostNumInPod);
-		printf("eachSide : %d\n", eachSide);
-		printf("fatK : %d\n", fatK);
-		printf("numForNotTag : %d\n", numForNotTag);
-		printf("flowBased : %d\n", flowBased);
-		printf("pathListNum : %d\n", pathListNum);
-		int nn = fatK / 2;
-		int cal1 = (NodeId - nn * nn) / nn;
-		int cal2 = (NodeId - nn * nn) % nn;
-		if (cal1 == PodId) {
-			printf("yes.\n");
-		} else {
-			printf("no.\n");
-		}
-		if (cal2 == InPodId) {
-			printf("yes.\n");
-		} else {
-			printf("no.\n");
-		}
+else if (SWITCH_AGG == NodeType) {
+	printf("\nagg switch:\nnode id : %d\n", NodeId);
+	printf("pod id : %d\n", PodId);
+	printf("in pod id : %d\n", InPodId);
+	printf("hostShift : %d\n", hostShift);
+	printf("hostNumInPod : %d\n", hostNumInPod);
+	printf("eachSide : %d\n", eachSide);
+	printf("fatK : %d\n", fatK);
+	printf("numForNotTag : %d\n", numForNotTag);
+	printf("flowBased : %d\n", flowBased);
+	printf("pathListNum : %d\n", pathListNum);
+	int nn = fatK / 2;
+	int cal1 = (NodeId - nn * nn) / nn;
+	int cal2 = (NodeId - nn * nn) % nn;
+	if (cal1 == PodId) {
+		printf("yes.\n");
+	} else {
+		printf("no.\n");
 	}
+	if (cal2 == InPodId) {
+		printf("yes.\n");
+	} else {
+		printf("no.\n");
+	}
+}
 
-	else if (SWITCH_EDGE == NodeType) {
-		printf("\nedge switch:\nnode id : %d\n", NodeId);
-		printf("pod id : %d\n", PodId);
-		printf("in pod id : %d\n", InPodId);
-		printf("hostShift : %d\n", hostShift);
-		printf("hostNumInPod : %d\n", hostNumInPod);
-		printf("eachSide : %d\n", eachSide);
-		printf("fatK : %d\n", fatK);
-		printf("aggShift : %d\n", aggShift);
-		printf("numForNotTag : %d\n", numForNotTag);
-		printf("flowBased : %d\n", flowBased);
-		printf("pathListNum : %d\n", pathListNum);
-		int nn = fatK / 2;
-		int cal1 = (NodeId - nn * nn - fatK * nn) / nn;
-		int cal2 = (NodeId - nn * nn) % nn;
-		int cal3 = PodId * nn + nn * nn;
-		if (cal1 == PodId) {
-			printf("yes.\n");
-		} else {
-			printf("no.\n");
-		}
-		if (cal2 == InPodId) {
-			printf("yes.\n");
-		} else {
-			printf("no.\n");
-		}
-		if (cal3 == aggShift) {
-			printf("yes.\n");
-		} else {
-			printf("no.\n");
-		}
+else if (SWITCH_EDGE == NodeType) {
+	printf("\nedge switch:\nnode id : %d\n", NodeId);
+	printf("pod id : %d\n", PodId);
+	printf("in pod id : %d\n", InPodId);
+	printf("hostShift : %d\n", hostShift);
+	printf("hostNumInPod : %d\n", hostNumInPod);
+	printf("eachSide : %d\n", eachSide);
+	printf("fatK : %d\n", fatK);
+	printf("aggShift : %d\n", aggShift);
+	printf("numForNotTag : %d\n", numForNotTag);
+	printf("flowBased : %d\n", flowBased);
+	printf("pathListNum : %d\n", pathListNum);
+	int nn = fatK / 2;
+	int cal1 = (NodeId - nn * nn - fatK * nn) / nn;
+	int cal2 = (NodeId - nn * nn) % nn;
+	int cal3 = PodId * nn + nn * nn;
+	if (cal1 == PodId) {
+		printf("yes.\n");
+	} else {
+		printf("no.\n");
 	}
+	if (cal2 == InPodId) {
+		printf("yes.\n");
+	} else {
+		printf("no.\n");
+	}
+	if (cal3 == aggShift) {
+		printf("yes.\n");
+	} else {
+		printf("no.\n");
+	}
+}
 
-	else if (SWITCH_NC == NodeType) {
-		printf("\nhehe.\n");
-	}
+else if (SWITCH_NC == NodeType) {
+	printf("\nhehe.\n");
+}
 
-	else {
-		printf("\nhehe.\n");
-	}
+else {
+	printf("\nhehe.\n");
+}
 }
 
 int WRRSClassifier::command(int argc, const char* const * argv) {
-	/**
-	 $classifier setNodeInfo podid inpodid type aggshift
-	 $classifier setFatTreeK  k
-	 $classifier insertTag   tag
-	 $classifier removeTag tag
-	 $classifier setTagSection  sec
-	 $classifier setNodeType type
-	 $classifier setRRType type
+/**
+ $classifier setNodeInfo podid inpodid type aggshift
+ $classifier setFatTreeK  k
+ $classifier insertTag   tag
+ $classifier removeTag tag
+ $classifier setTagSection  sec
+ $classifier setNodeType type
+ $classifier setRRType type
 
-	 $classifier printNodeInfo
-	 $classifier resetLast
+ $classifier printNodeInfo
+ $classifier resetLast
 
-	 $classifier setFlowBased	0/1
-	 $classifier addFlowId		fid
-	 $classifier removeFlowId	fid
-	 $classifier findNextIdByFid	fid
+ $classifier setFlowBased	0/1
+ $classifier addFlowId		fid
+ $classifier removeFlowId	fid
+ $classifier findNextIdByFid	fid
 
-	 */
+ */
 //Tcl& tcl = Tcl::instance();
-	if (argc == 2) {
-		if (strcmp(argv[1], "printNodeInfo") == 0) {
-			printNodeInfo();
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "resetLast") == 0) {
-			initLast();
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "disableLinkFailure") == 0) {
-			disableLinkFailure();
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "getFlowNum") == 0) {
-			getFlowNum();
-			return (TCL_OK);
-		}
-
-	} else if (argc == 3) {
-		if (strcmp(argv[1], "setFatTreeK") == 0) {
-			int key = atoi(argv[2]);
-			fatTreeK(key);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "insertTag") == 0) {
-			insertTag(int(atoi(argv[2])));
-			//packetTag.printTable();
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "removeTag") == 0) {
-			removeTag(int(atoi(argv[2])));
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "setTagSection") == 0) {
-			int key = atoi(argv[2]);
-			//printf("^^^%d\n", key);
-			setTagSection(key);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "setNodeType") == 0) {
-			int key = atoi(argv[2]);
-			setNodeType(key);
-			return (TCL_OK);
-		}
-
-		/*
-		 if (strcmp(argv[1], "setRRType") == 0)
-		 {
-		 int key = atoi(argv[2]);
-		 setRRSTD(key);
-		 return (TCL_OK);
-		 }
-		 */
-	} else if (argc == 4) {
-		if (strcmp(argv[1], "setFlowBased") == 0) {
-			int key = atoi(argv[2]);
-			int key2 = atoi(argv[3]);
-			setFlowBased(key, key2);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "addFlowId") == 0) {
-			int key = atoi(argv[2]);
-			int key2 = atoi(argv[3]);
-			addFlowId(key, key2);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "removeFlowId") == 0) {
-			int key = atoi(argv[2]);
-			int key2 = atoi(argv[3]);
-			removeFlowId(key, key2);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "findNextIdByFid") == 0) {
-			int key = atoi(argv[2]);
-			int key2 = atoi(argv[3]);
-			findNextIdByFid(key, key2);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "enableLinkFailure") == 0) {
-			int key = atoi(argv[2]);
-			int key2 = atoi(argv[3]);
-			enableLinkFailure(key, key2);
-			return (TCL_OK);
-		}
-
-	} else if (argc == 6) {
-		if (strcmp(argv[1], "setNodeInfo") == 0) {
-			int podid = atoi(argv[2]);
-			int inpodid = atoi(argv[3]);
-			int type = atoi(argv[4]);
-			int agg = atoi(argv[5]);
-			setNodeInfo(podid, inpodid, type, agg);
-			return (TCL_OK);
-		}
-
+if (argc == 2) {
+	if (strcmp(argv[1], "printNodeInfo") == 0) {
+		printNodeInfo();
+		return (TCL_OK);
 	}
-	return (Classifier::command(argc, argv));
+
+	if (strcmp(argv[1], "resetLast") == 0) {
+		initLast();
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "disableLinkFailure") == 0) {
+		disableLinkFailure();
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "getFlowNum") == 0) {
+		getFlowNum();
+		return (TCL_OK);
+	}
+
+} else if (argc == 3) {
+	if (strcmp(argv[1], "setFatTreeK") == 0) {
+		int key = atoi(argv[2]);
+		fatTreeK(key);
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "insertTag") == 0) {
+		insertTag(int(atoi(argv[2])));
+		//packetTag.printTable();
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "removeTag") == 0) {
+		removeTag(int(atoi(argv[2])));
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "setTagSection") == 0) {
+		int key = atoi(argv[2]);
+		//printf("^^^%d\n", key);
+		setTagSection(key);
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "setNodeType") == 0) {
+		int key = atoi(argv[2]);
+		setNodeType(key);
+		return (TCL_OK);
+	}
+
+	/*
+	 if (strcmp(argv[1], "setRRType") == 0)
+	 {
+	 int key = atoi(argv[2]);
+	 setRRSTD(key);
+	 return (TCL_OK);
+	 }
+	 */
+} else if (argc == 4) {
+	if (strcmp(argv[1], "setFlowBased") == 0) {
+		int key = atoi(argv[2]);
+		int key2 = atoi(argv[3]);
+		setFlowBased(key, key2);
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "removeFlowId") == 0) {
+		int key = atoi(argv[2]);
+		int key2 = atoi(argv[3]);
+		removeFlowId(key, key2);
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "findNextIdByFid") == 0) {
+		int key = atoi(argv[2]);
+		int key2 = atoi(argv[3]);
+		findNextIdByFid(key, key2);
+		return (TCL_OK);
+	}
+
+	if (strcmp(argv[1], "enableLinkFailure") == 0) {
+		int key = atoi(argv[2]);
+		int key2 = atoi(argv[3]);
+		enableLinkFailure(key, key2);
+		return (TCL_OK);
+	}
+
+} else if (argc == 5) {
+	if (strcmp(argv[1], "addFlowId") == 0) {
+		int key = atoi(argv[2]);
+		int key2 = atoi(argv[3]);
+		int key3 = atoi(argv[4]);
+		addFlowId(key, key2, key3);
+		return (TCL_OK);
+	}
+
+}
+
+else if (argc == 6) {
+	if (strcmp(argv[1], "setNodeInfo") == 0) {
+		int podid = atoi(argv[2]);
+		int inpodid = atoi(argv[3]);
+		int type = atoi(argv[4]);
+		int agg = atoi(argv[5]);
+		setNodeInfo(podid, inpodid, type, agg);
+		return (TCL_OK);
+	}
+
+}
+return (Classifier::command(argc, argv));
 }
 
 bool findInList(INTLIST l, int key) {
-	INTLIST::iterator it = find(l.begin(), l.end(), key);
-	if (l.end() == it)
-		return false;
-	return true;
+INTLIST::iterator it = find(l.begin(), l.end(), key);
+if (l.end() == it)
+	return false;
+return true;
 }
 
 int findMinSizeIndexAmongList(INTLIST * llist, int listNum) {
-	if (NULL == llist || listNum <= 0) {
-		printf("lists wrong\n");
-		return -1;
-	}
+if (NULL == llist || listNum <= 0) {
+	printf("lists wrong\n");
+	return -1;
+}
 
-	int min = llist[0].size();
-	int index = 0;
-	int i;
-	for (i = 1; i < listNum; ++i) {
-		if (llist[i].size() < min) {
-			min = llist[i].size();
-			index = i;
-		}
+int min = llist[0].size();
+int index = 0;
+int i;
+for (i = 1; i < listNum; ++i) {
+	if (llist[i].size() < min) {
+		min = llist[i].size();
+		index = i;
 	}
-	return index;
+}
+return index;
+}
+
+int findMinSizeIndexAmongList(INTLIST * llist, int listNum, int exclude) {
+if (NULL == llist || listNum <= 0) {
+	printf("lists wrong\n");
+	return -1;
+}
+
+int min = INT_MAX, index;
+int i;
+for (i = 0; i < listNum; ++i) {
+	if (exclude == i)
+		continue;
+	if (llist[i].size() < min) {
+		min = llist[i].size();
+		index = i;
+	}
+}
+return index;
 }
 
 int addAmongLists(INTLIST * llist, int listNum, int key) {
-	if (NULL == llist || listNum <= 0)
-		return -1;
-	int findPath = findMinSizeIndexAmongList(llist, listNum);
-	if (-1 != findPath) {
-		llist[findPath].push_back(key);
-	}
-	return findPath;
+if (NULL == llist || listNum <= 0)
+	return -1;
+int findPath = findMinSizeIndexAmongList(llist, listNum);
+if (-1 != findPath) {
+	llist[findPath].push_back(key);
+}
+return findPath;
+}
+
+int addAmongLists(INTLIST * llist, int listNum, int key, int exclude) {
+if (NULL == llist || listNum <= 0)
+	return -1;
+int findPath = findMinSizeIndexAmongList(llist, listNum, exclude);
+if (-1 != findPath) {
+	llist[findPath].push_back(key);
+}
+return findPath;
 }
 
 int removeAmongLists(INTLIST * llist, int listNum, int key) {
-	if (NULL == llist || listNum <= 0)
-		return -1;
-	int i;
-	for (i = 0; i < listNum; ++i) {
-		if (true == findInList(llist[i], key)) {
-			llist[i].remove(key);
-			return i;
-		}
-	}
+if (NULL == llist || listNum <= 0)
 	return -1;
+int i;
+for (i = 0; i < listNum; ++i) {
+	if (true == findInList(llist[i], key)) {
+		llist[i].remove(key);
+		return i;
+	}
+}
+return -1;
 }
 
 int findIndexAmongLists(INTLIST * llist, int listNum, int key) {
-	if (NULL == llist || listNum <= 0)
-		return -1;
-	int i;
-	for (i = 0; i < listNum; ++i) {
-		if (true == findInList(llist[i], key)) {
-			return i;
-		}
-	}
+if (NULL == llist || listNum <= 0)
 	return -1;
+int i;
+for (i = 0; i < listNum; ++i) {
+	if (true == findInList(llist[i], key)) {
+		return i;
+	}
+}
+return -1;
 }
 
 int newIntLists(INTLIST * &llist, int listNum) {
-	if (NULL != llist) {
-		printf("[ERROR] NOT release space pointed by llist!\n");
-		exit(-1);
-	}
-	if (listNum <= 0)
-		return -1;
-	llist = new INTLIST[listNum];
-	return 0;
+if (NULL != llist) {
+	printf("[ERROR] NOT release space pointed by llist!\n");
+	exit(-1);
+}
+if (listNum <= 0)
+	return -1;
+llist = new INTLIST[listNum];
+return 0;
 }
 
 int destoryIntLists(INTLIST * &llist, int &listNum) {
-	if (NULL == llist || listNum <= 0)
-		return -1;
-	int i;
-	for (i = 0; i < listNum; ++i)
-		llist[i].clear();
-	delete[] llist;
-	llist = NULL;
-	listNum = 0;
-	return 0;
+if (NULL == llist || listNum <= 0)
+	return -1;
+int i;
+for (i = 0; i < listNum; ++i)
+	llist[i].clear();
+delete[] llist;
+llist = NULL;
+listNum = 0;
+return 0;
 }
 
 int printIntLists(INTLIST * &llist, int &listNum) {
-	if (NULL == llist || listNum <= 0)
-		return -1;
-	int i;
-	for (i = 0; i < listNum; ++i) {
-		printf("%d : ", i);
-		INTLIST::iterator it;
-		for (it = llist[i].begin(); it != llist[i].end(); it++) {
-			printf("%d ", *it);
-		}
-		printf("\n");
+if (NULL == llist || listNum <= 0)
+	return -1;
+int i;
+for (i = 0; i < listNum; ++i) {
+	printf("%d : ", i);
+	INTLIST::iterator it;
+	for (it = llist[i].begin(); it != llist[i].end(); it++) {
+		printf("%d ", *it);
 	}
 	printf("\n");
-	return 1;
+}
+printf("\n");
+return 1;
 }

@@ -19,6 +19,7 @@
 #include "classifier.h"
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 
 /**
  * stl list
@@ -33,7 +34,11 @@ typedef list<int> INTLIST;
 
 bool findInList(INTLIST l, int key);
 int findMinSizeIndexAmongList(INTLIST * llist, int listNum);
+int findMinSizeIndexAmongList(INTLIST * llist, int listNum, int exclude);
+
 int addAmongLists(INTLIST * llist, int listNum, int key);
+int addAmongLists(INTLIST * llist, int listNum, int key, int exclude);
+
 int removeAmongLists(INTLIST * llist, int listNum, int key);
 int findIndexAmongLists(INTLIST * llist, int listNum, int key);
 
@@ -117,8 +122,10 @@ public:
 	void setFlowBased(int flag, int feedBack);
 	/*
 	 * feedBack== 1  从pathList4fb中查找
+	 * addr 表示该流的目的地至
 	 * */
-	int addFlowId(int fid, int feedBack);
+	int addFlowId(int fid, int feedBack, int addr);
+
 	void removeFlowId(int fid, int feedBack);
 	int findFidIndexAmongLists(int fid, int feedBack);
 	void findNextIdByFid(int fid, int feedBack);	/// 通过c++向tcl传递结果
@@ -181,4 +188,5 @@ private:
 	int linkDstId;
 	int linkDstSubId;
 	int podSeqForLFDown;
+
 };
