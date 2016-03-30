@@ -115,6 +115,14 @@ WRRSClassifier::WRRSClassifier() {
 	//hostRR = false;
 	//oneRR = false;
 	RRNum = 0;
+
+	isLinkFailure = false;
+	linkFailureType = NON_LINK;
+	linkSrcId = -1;
+	linkDstId = -1;
+	linkDstSubId = -1;
+	podSeqForLFDown = -1;
+
 }
 
 WRRSClassifier::~WRRSClassifier() {
@@ -132,6 +140,9 @@ int WRRSClassifier::fatTreeK(int k) {
 	hostNumInPod = k * k / 4;
 	eachSide = k / 2;
 	hostShift = 5 * k * k / 4;
+
+	AGGSHIRFT = k * k / 4;
+	EDGESHIRFT = 3 * k * k / 4;
 	numForNotTag = k / 2;
 
 	if (NULL != wrrLast)
@@ -150,8 +161,7 @@ int WRRSClassifier::addrToPodId(int addr) {
 }
 
 int WRRSClassifier::addrToSubnetId(int addr) {
-	int subnetNum = eachSide;
-	return ((addr) % hostNumInPod) / subnetNum;
+	return ((addr) % hostNumInPod) / eachSide;
 }
 
 int WRRSClassifier::classify(Packet *p) {
@@ -253,8 +263,18 @@ int WRRSClassifier::nextWRR(int rrNum, int MOL) {
 	return next;
 }
 
+int WRRSClassifier::nextWRR(int rrNum, int MOL, int exclude) {
+	int next;
+	do {
+		next = wrrLast[rrNum] % (MOL);
+		wrrLast[rrNum] = (next + 1) % (MOL);
+	} while (next == exclude);
+	return next;
+}
+
 /// upstreams时，对switch的选择
 // @param feedBack 该包是不是ack包
+// addr = iph->daddr() - hostShift;
 int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 	int next;
 
@@ -269,12 +289,19 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 			// 如果没有对应的路径， 分配一条默认的路径。
 			next = aggShift + (-1 == findPath ? 0 : findPath);
 		} else {
-			next = InPodId * eachSide + nextWRR(addr, eachSide);
+
+			if (isLinkFailure && (CORE_LINK == linkFailureType)
+					&& (NodeId == linkSrcId
+							|| podSeqForLFDown == addrToPodId(addr))) {
+				next = aggShift + nextWRR(addr, eachSide, linkDstSubId);
+			} else {
+				next = aggShift + nextWRR(addr, eachSide);
+			}
 		}
 
 	}
 
-	/// edge switch
+/// edge switch
 	else if (SWITCH_EDGE == NodeType) {
 		if (numForNotTag == eachSide) {
 			/// 每条路都可用
@@ -286,9 +313,14 @@ int WRRSClassifier::schedule(int podid, int fid, int addr, int feedBack) {
 				 }*/
 				next = aggShift + (-1 == findPath ? 0 : findPath);
 			} else {
-				next = aggShift + nextWRR(addr, eachSide);
+				if (isLinkFailure && (AGG_LINK == linkFailureType)
+						&& (NodeId == linkSrcId
+								|| podSeqForLFDown == addr / eachSide)) {
+					next = aggShift + nextWRR(addr, eachSide, linkDstSubId);
+				} else {
+					next = aggShift + nextWRR(addr, eachSide);
+				}
 			}
-
 		} else {
 			if (ST_NOTFOUND == packetTag.findKey(fid)) {
 				next = aggShift + nextWRR(addr, numForNotTag);
@@ -369,22 +401,65 @@ void WRRSClassifier::initLast() {
  }
  */
 
-int WRRSClassifier::addFlowId(int fid, int feedBack) {
+int WRRSClassifier::addFlowId(int fid, int feedBack, int addr) {
 	int findPath = -1;
 	if (false == flowBased) {
 		printf("not flow based but still add fid!");
 		findPath = -1;
 	} else {
-		if (1 == feedBack)
-			findPath = addAmongLists(pathList4fb, pathList4fbNum, fid);
-		else
-			findPath = addAmongLists(pathList, pathListNum, fid);
+		bool isExclude = false;
+		if (isLinkFailure) {
+			if ((CORE_LINK == linkFailureType
+					&& podSeqForLFDown == addrToPodId(addr))
+					|| (AGG_LINK == linkFailureType
+							&& podSeqForLFDown == addr / eachSide)) {
+				isExclude = true;
+			}
+		}
+
+		if (1 == feedBack) {
+			if (!isExclude)
+				findPath = addAmongLists(pathList4fb, pathList4fbNum, fid);
+			else
+				findPath = addAmongLists(pathList4fb, pathList4fbNum, fid,
+						linkDstSubId);
+		} else {
+			if (!isExclude)
+				findPath = addAmongLists(pathList, pathListNum, fid);
+			else
+				findPath = addAmongLists(pathList, pathListNum, fid,
+						linkDstSubId);
+		}
 		if (-1 == findPath) {
 			printf("flow based path add record wrong! nid = %d\n", NodeId);
 		}
 	}
 	Tcl& tcl = Tcl::instance();
 	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
+	return findPath;
+}
+
+/**
+ * 用于linkFailure， 将fid添加到对应路径，并避免Linkfailure路径
+ * */
+int WRRSClassifier::addFlowIdforLF(int fid, int feedBack) {
+	int findPath = -1;
+	if (false == flowBased) {
+		printf("not flow based but still add fid!");
+		findPath = -1;
+	} else {
+		if (1 == feedBack) {
+			findPath = addAmongLists(pathList4fb, pathList4fbNum, fid,
+					linkDstSubId);
+		} else {
+			findPath = addAmongLists(pathList, pathListNum, fid, linkDstSubId);
+		}
+		if (-1 == findPath) {
+			printf("flow based path add record wrong! nid = %d\n", NodeId);
+		}
+	}
+	Tcl& tcl = Tcl::instance();
+	tcl.resultf("%d", findPath);
 	return findPath;
 }
 
@@ -435,6 +510,178 @@ void WRRSClassifier::findNextIdByFid(int fid, int feedBack) {
 	} else {
 		tcl.resultf("%d", aggShift + findPath);
 	}
+}
+
+/**
+ * 对于 linkFailureType == AGG_LINK的情况
+ * 返回符合条件的fid的个数
+ * */
+void WRRSClassifier::getFlowNum4LF(int feedBack) {
+	Tcl& tcl = Tcl::instance();
+	if (isLinkFailure && AGG_LINK == linkFailureType) {
+		if (NodeId == linkSrcId) {
+			if (1 == feedBack)
+				tcl.resultf("%d", pathList4fb[linkDstSubId].size());
+			else
+				tcl.resultf("%d", pathList[linkDstSubId].size());
+		} else {
+			int num = 0;
+			INTLIST::iterator iter;
+			if (1 == feedBack) {
+				for (iter = pathList4fb[linkDstSubId].begin();
+						iter != pathList4fb[linkDstSubId].end(); ++iter) {
+					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+						++num;
+					}
+				}
+			} else {
+				for (iter = pathList[linkDstSubId].begin();
+						iter != pathList[linkDstSubId].end(); ++iter) {
+					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+						++num;
+					}
+				}
+			}
+			tcl.resultf("%d", num);
+		}
+	} else {
+		tcl.resultf("%d", -1);
+	}
+}
+
+void WRRSClassifier::getFlowId4LF(int feedBack) {
+	Tcl& tcl = Tcl::instance();
+	int fid = -1;
+	INTLIST::iterator iter, iter1;
+	if (isLinkFailure && AGG_LINK == linkFailureType) {
+		if (NodeId == linkSrcId) {
+			if (1 == feedBack) {
+				if (pathList4fb[linkDstSubId].size() > 0) {
+					iter = pathList4fb[linkDstSubId].begin();
+					fid = *iter;
+					pathList4fb[linkDstSubId].erase(iter);
+				}
+			} else {
+				if (pathList[linkDstSubId].size() > 0) {
+					iter = pathList[linkDstSubId].begin();
+					fid = *iter;
+					pathList[linkDstSubId].erase(iter);
+				}
+			}
+			tcl.resultf("%d", fid);
+		} else {
+			int num = 0;
+			if (1 == feedBack) {
+				for (iter = pathList4fb[linkDstSubId].begin();
+						iter != pathList4fb[linkDstSubId].end(); ++iter) {
+					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+						fid = *iter;
+						pathList4fb[linkDstSubId].erase(iter);
+						break;
+					}
+				}
+			} else {
+				for (iter = pathList[linkDstSubId].begin();
+						iter != pathList[linkDstSubId].end(); ++iter) {
+					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+						fid = *iter;
+						pathList[linkDstSubId].erase(iter);
+						break;
+					}
+				}
+			}
+			tcl.resultf("%d", fid);
+		}
+	} else {
+		tcl.resultf("%d", -1);
+	}
+}
+
+/**
+ * 在对应的节点上， 在已经分配的路径，如果满足要求，从新分配路径
+ * 对于 linkFailureType == CORE_LINK的情况
+ * */
+void WRRSClassifier::transferFlowId() {
+	INTLIST::iterator iter;
+	if (!isLinkFailure || CORE_LINK != linkFailureType)
+		return;
+	if (NodeId == linkSrcId) {
+		for (iter = pathList[linkDstSubId].begin();
+				iter != pathList[linkDstSubId].end(); ++iter) {
+			addFlowIdforLF(*iter, 0);
+		}
+		pathList[linkDstSubId].clear();
+		for (iter = pathList4fb[linkDstSubId].begin();
+				iter != pathList4fb[linkDstSubId].end(); ++iter) {
+			addFlowIdforLF(*iter, 1);
+		}
+		pathList4fb[linkDstSubId].clear();
+	} else {
+		for (iter = pathList[linkDstSubId].begin();
+				iter != pathList[linkDstSubId].end();) {
+			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter))) {
+				addFlowIdforLF(*iter, 0);
+				iter = pathList[linkDstSubId].erase(iter);
+			} else {
+				++iter;
+			}
+		}
+
+		for (iter = pathList4fb[linkDstSubId].begin();
+				iter != pathList4fb[linkDstSubId].end(); ++iter) {
+			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter))) {
+				addFlowIdforLF(*iter, 1);
+				iter = pathList4fb[linkDstSubId].erase(iter);
+			} else {
+				++iter;
+			}
+		}
+	}
+}
+
+void WRRSClassifier::enableLinkFailure(int linkSrcId, int linkDstId) {
+	this->isLinkFailure = true;
+	this->linkSrcId = linkSrcId;
+	this->linkDstId = linkDstId;
+
+/// 如果是 CORE_LINK, podSeqForLFDown 代表 podNum
+/// 如果是 AGG_LINK, podSeqForLFDown 代表以 subpod为单位的 seq, 注意， 与 InPodId 不同
+	if (linkSrcId >= AGGSHIRFT && linkSrcId < EDGESHIRFT) {
+		linkFailureType = CORE_LINK;
+		linkDstSubId = (linkDstId - 0) % eachSide;
+		podSeqForLFDown = (linkSrcId - AGGSHIRFT) / eachSide;
+		transferFlowId();
+
+	} else if (linkSrcId >= EDGESHIRFT && linkSrcId < hostShift) {
+		linkFailureType = AGG_LINK;
+		linkDstSubId = (linkDstId - AGGSHIRFT) % eachSide;
+		podSeqForLFDown = (linkSrcId - EDGESHIRFT);
+	}
+
+}
+
+void WRRSClassifier::disableLinkFailure() {
+	this->isLinkFailure = false;
+}
+
+void WRRSClassifier::addFidToDstAddr(int fid, int dstAddr) {
+	fidToDsrAddr[fid] = dstAddr;
+}
+
+int WRRSClassifier::findDstAddr(int fid) {
+	INTMAP::iterator iter = fidToDsrAddr.find(fid);
+	if (iter != fidToDsrAddr.end()) {
+		return iter->second;
+	}
+	return -1;
+}
+
+void WRRSClassifier::printFidToDstAddr() {
+	INTMAP::iterator iter;
+	for (iter = fidToDsrAddr.begin(); iter != fidToDsrAddr.end(); ++iter) {
+		cout << iter->first << "\t" << iter->second << endl;
+	}
+	cout << endl;
 }
 
 void WRRSClassifier::printNodeInfo() {
@@ -545,6 +792,16 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
+		if (strcmp(argv[1], "disableLinkFailure") == 0) {
+			disableLinkFailure();
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "printFidToDstAddr") == 0) {
+			printFidToDstAddr();
+			return (TCL_OK);
+		}
+
 	} else if (argc == 3) {
 		if (strcmp(argv[1], "setFatTreeK") == 0) {
 			int key = atoi(argv[2]);
@@ -576,6 +833,12 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
+		if (strcmp(argv[1], "getFlowNum4LF") == 0) {
+			int key = atoi(argv[2]);
+			getFlowNum4LF(key);
+			return (TCL_OK);
+		}
+
 		/*
 		 if (strcmp(argv[1], "setRRType") == 0)
 		 {
@@ -589,13 +852,6 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			int key = atoi(argv[2]);
 			int key2 = atoi(argv[3]);
 			setFlowBased(key, key2);
-			return (TCL_OK);
-		}
-
-		if (strcmp(argv[1], "addFlowId") == 0) {
-			int key = atoi(argv[2]);
-			int key2 = atoi(argv[3]);
-			addFlowId(key, key2);
 			return (TCL_OK);
 		}
 
@@ -613,7 +869,39 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
-	} else if (argc == 6) {
+		if (strcmp(argv[1], "enableLinkFailure") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			enableLinkFailure(key, key2);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "addFidToDstAddr") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			addFidToDstAddr(key, key2);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "addFlowIdforLF") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			addFlowIdforLF(key, key2);
+			return (TCL_OK);
+		}
+
+	} else if (argc == 5) {
+		if (strcmp(argv[1], "addFlowId") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			int key3 = atoi(argv[4]);
+			addFlowId(key, key2, key3);
+			return (TCL_OK);
+		}
+
+	}
+
+	else if (argc == 6) {
 		if (strcmp(argv[1], "setNodeInfo") == 0) {
 			int podid = atoi(argv[2]);
 			int inpodid = atoi(argv[3]);
@@ -622,6 +910,7 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			setNodeInfo(podid, inpodid, type, agg);
 			return (TCL_OK);
 		}
+
 	}
 	return (Classifier::command(argc, argv));
 }
@@ -651,10 +940,39 @@ int findMinSizeIndexAmongList(INTLIST * llist, int listNum) {
 	return index;
 }
 
+int findMinSizeIndexAmongList(INTLIST * llist, int listNum, int exclude) {
+	if (NULL == llist || listNum <= 0) {
+		printf("lists wrong\n");
+		return -1;
+	}
+
+	int min = INT_MAX, index;
+	int i;
+	for (i = 0; i < listNum; ++i) {
+		if (exclude == i)
+			continue;
+		if (llist[i].size() < min) {
+			min = llist[i].size();
+			index = i;
+		}
+	}
+	return index;
+}
+
 int addAmongLists(INTLIST * llist, int listNum, int key) {
 	if (NULL == llist || listNum <= 0)
 		return -1;
 	int findPath = findMinSizeIndexAmongList(llist, listNum);
+	if (-1 != findPath) {
+		llist[findPath].push_back(key);
+	}
+	return findPath;
+}
+
+int addAmongLists(INTLIST * llist, int listNum, int key, int exclude) {
+	if (NULL == llist || listNum <= 0)
+		return -1;
+	int findPath = findMinSizeIndexAmongList(llist, listNum, exclude);
 	if (-1 != findPath) {
 		llist[findPath].push_back(key);
 	}

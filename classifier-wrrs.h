@@ -19,6 +19,7 @@
 #include "classifier.h"
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 
 /**
  * stl list
@@ -27,13 +28,20 @@
 #include <list>
 #include <algorithm>
 
+#include <map>
+
 using namespace std;
 
 typedef list<int> INTLIST;
+typedef map<int, int> INTMAP;
 
 bool findInList(INTLIST l, int key);
 int findMinSizeIndexAmongList(INTLIST * llist, int listNum);
+int findMinSizeIndexAmongList(INTLIST * llist, int listNum, int exclude);
+
 int addAmongLists(INTLIST * llist, int listNum, int key);
+int addAmongLists(INTLIST * llist, int listNum, int key, int exclude);
+
 int removeAmongLists(INTLIST * llist, int listNum, int key);
 int findIndexAmongLists(INTLIST * llist, int listNum, int key);
 
@@ -83,6 +91,10 @@ private:
 #define FLOWBASED		1
 #define NOTFLOWBASED	0
 
+#define NON_LINK		0
+#define CORE_LINK		1
+#define AGG_LINK		2
+
 class WRRSClassifier: public Classifier {
 public:
 	WRRSClassifier();
@@ -113,12 +125,28 @@ public:
 	void setFlowBased(int flag, int feedBack);
 	/*
 	 * feedBack== 1  从pathList4fb中查找
+	 * addr 表示该流的目的地至
 	 * */
-	int addFlowId(int fid, int feedBack);
+	int addFlowId(int fid, int feedBack, int addr);
+
 	void removeFlowId(int fid, int feedBack);
 	int findFidIndexAmongLists(int fid, int feedBack);
 	void findNextIdByFid(int fid, int feedBack);	/// 通过c++向tcl传递结果
 	//void setRRSTD(int lastType);
+
+	void getFlowNum4LF(int feedBack);
+	void getFlowId4LF(int feedBack);
+	// 这里规定srcid比dstid大。
+	void enableLinkFailure(int linkSrcId, int linkDstId);
+	void disableLinkFailure();
+
+	/// 这里添加的dstAddr是值 nodeId - hostShift
+	void addFidToDstAddr(int fid, int dstAddr);
+	int findDstAddr(int fid);
+	void printFidToDstAddr();
+
+	void transferFlowId();
+	int addFlowIdforLF(int fid, int feedBack);
 
 protected:
 
@@ -129,6 +157,7 @@ protected:
 
 	int schedule(int podid, int fid, int addr, int feedBack);
 	int nextWRR(int rrNum, int MOL);
+	int nextWRR(int rrNum, int MOL, int exclude);
 
 	/// packet tag
 	SearchTable packetTag;
@@ -142,6 +171,10 @@ private:
 	int aggShift;  			/// agg,edge使用该变量，记录该pod第一个agg switch的id。
 
 	int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
+
+	int AGGSHIRFT;		/// agg node的偏移量
+	int EDGESHIRFT;		/// edge node的偏移量
+
 	int hostNumInPod;           	/// (k决定)
 	int eachSide;                   /// (k决定)
 	int *wrrLast;                   ///(k决定)
@@ -158,4 +191,15 @@ private:
 	//bool hostRR;
 	//bool oneRR;
 	int RRNum;
+
+	bool isLinkFailure;
+	int linkFailureType;
+	// 这里规定srcid比dstid大。
+	int linkSrcId;
+	int linkDstId;
+	int linkDstSubId;
+	int podSeqForLFDown;
+
+	INTMAP fidToDsrAddr;
+
 };
