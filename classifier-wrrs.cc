@@ -569,7 +569,6 @@ void WRRSClassifier::getFlowId4LF(int feedBack) {
 			}
 			tcl.resultf("%d", fid);
 		} else {
-			int num = 0;
 			if (1 == feedBack) {
 				for (iter = pathList4fb[linkDstSubId].begin();
 						iter != pathList4fb[linkDstSubId].end(); ++iter) {
@@ -856,6 +855,12 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 		if (strcmp(argv[1], "getFlowNum4LF") == 0) {
 			int key = atoi(argv[2]);
 			getFlowNum4LF(key);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "getFlowId4LF") == 0) {
+			int key = atoi(argv[2]);
+			getFlowId4LF(key);
 			return (TCL_OK);
 		}
 
