@@ -458,8 +458,8 @@ int WRRSClassifier::addFlowIdforLF(int fid, int feedBack) {
 			printf("flow based path add record wrong! nid = %d\n", NodeId);
 		}
 	}
-//	Tcl& tcl = Tcl::instance();
-//	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
+	Tcl& tcl = Tcl::instance();
+	tcl.resultf("%d", findPath);
 	return findPath;
 }
 

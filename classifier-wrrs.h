@@ -141,9 +141,9 @@ public:
 	void disableLinkFailure();
 
 	/// 这里添加的dstAddr是值 nodeId - hostShift
-	static void addFidToDstAddr(int fid, int dstAddr);
-	static int findDstAddr(int fid);
-	static void printFidToDstAddr();
+	void addFidToDstAddr(int fid, int dstAddr);
+	int findDstAddr(int fid);
+	void printFidToDstAddr();
 
 	void transferFlowId();
 	int addFlowIdforLF(int fid, int feedBack);
@@ -170,15 +170,15 @@ private:
 	int NodeType;
 	int aggShift;  			/// agg,edge使用该变量，记录该pod第一个agg switch的id。
 
-	static int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
+	int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
 
-	static int AGGSHIRFT;		/// agg node的偏移量
-	static int EDGESHIRFT;		/// edge node的偏移量
+	int AGGSHIRFT;		/// agg node的偏移量
+	int EDGESHIRFT;		/// edge node的偏移量
 
-	static int hostNumInPod;           	/// (k决定)
-	static int eachSide;                   /// (k决定)
+	int hostNumInPod;           	/// (k决定)
+	int eachSide;                   /// (k决定)
 	int *wrrLast;                   ///(k决定)
-	static int fatK;                       ///(k决定)
+	int fatK;                       ///(k决定)
 
 	int numForNotTag;
 
@@ -200,6 +200,6 @@ private:
 	int linkDstSubId;
 	int podSeqForLFDown;
 
-	static INTMAP fidToDsrAddr;
+	INTMAP fidToDsrAddr;
 
 };
