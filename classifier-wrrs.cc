@@ -416,7 +416,6 @@ int WRRSClassifier::addFlowId(int fid, int feedBack, int addr) {
 				isExclude = true;
 			}
 		}
-
 		if (1 == feedBack) {
 			if (!isExclude)
 				findPath = addAmongLists(pathList4fb, pathList4fbNum, fid);
@@ -530,14 +529,14 @@ void WRRSClassifier::getFlowNum4LF(int feedBack) {
 			if (1 == feedBack) {
 				for (iter = pathList4fb[linkDstSubId].begin();
 						iter != pathList4fb[linkDstSubId].end(); ++iter) {
-					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+					if (podSeqForLFDown == findDstAddr(*iter, 1) / eachSide) {
 						++num;
 					}
 				}
 			} else {
 				for (iter = pathList[linkDstSubId].begin();
 						iter != pathList[linkDstSubId].end(); ++iter) {
-					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+					if (podSeqForLFDown == findDstAddr(*iter, 0) / eachSide) {
 						++num;
 					}
 				}
@@ -574,7 +573,7 @@ void WRRSClassifier::getFlowId4LF(int feedBack) {
 			if (1 == feedBack) {
 				for (iter = pathList4fb[linkDstSubId].begin();
 						iter != pathList4fb[linkDstSubId].end(); ++iter) {
-					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+					if (podSeqForLFDown == findDstAddr(*iter, 1) / eachSide) {
 						fid = *iter;
 						pathList4fb[linkDstSubId].erase(iter);
 						break;
@@ -583,7 +582,7 @@ void WRRSClassifier::getFlowId4LF(int feedBack) {
 			} else {
 				for (iter = pathList[linkDstSubId].begin();
 						iter != pathList[linkDstSubId].end(); ++iter) {
-					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+					if (podSeqForLFDown == findDstAddr(*iter, 0) / eachSide) {
 						fid = *iter;
 						pathList[linkDstSubId].erase(iter);
 						break;
@@ -619,7 +618,7 @@ void WRRSClassifier::transferFlowId() {
 	} else {
 		for (iter = pathList[linkDstSubId].begin();
 				iter != pathList[linkDstSubId].end();) {
-			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter))) {
+			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter, 0))) {
 				addFlowIdforLF(*iter, 0);
 				iter = pathList[linkDstSubId].erase(iter);
 			} else {
@@ -629,7 +628,7 @@ void WRRSClassifier::transferFlowId() {
 
 		for (iter = pathList4fb[linkDstSubId].begin();
 				iter != pathList4fb[linkDstSubId].end(); ++iter) {
-			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter))) {
+			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter, 1))) {
 				addFlowIdforLF(*iter, 1);
 				iter = pathList4fb[linkDstSubId].erase(iter);
 			} else {
@@ -664,21 +663,41 @@ void WRRSClassifier::disableLinkFailure() {
 	this->isLinkFailure = false;
 }
 
-void WRRSClassifier::addFidToDstAddr(int fid, int dstAddr) {
-	fidToDsrAddr[fid] = dstAddr;
+void WRRSClassifier::addFidToDstAddr(int fid, int dstAddr, int feedBack) {
+	if (1 == feedBack) {
+		fidToDsrAddr4fb[fid] = dstAddr;
+	} else {
+		fidToDsrAddr[fid] = dstAddr;
+	}
 }
 
-int WRRSClassifier::findDstAddr(int fid) {
-	INTMAP::iterator iter = fidToDsrAddr.find(fid);
-	if (iter != fidToDsrAddr.end()) {
-		return iter->second;
+int WRRSClassifier::findDstAddr(int fid, int feedBack) {
+	INTMAP::iterator iter;
+
+	if (1 == feedBack) {
+		iter = fidToDsrAddr4fb.find(fid);
+		if (iter != fidToDsrAddr4fb.end()) {
+			return iter->second;
+		}
+	} else {
+		iter = fidToDsrAddr.find(fid);
+		if (iter != fidToDsrAddr.end()) {
+			return iter->second;
+		}
 	}
+
 	return -1;
 }
 
 void WRRSClassifier::printFidToDstAddr() {
 	INTMAP::iterator iter;
+	cout << "flow" << endl;
 	for (iter = fidToDsrAddr.begin(); iter != fidToDsrAddr.end(); ++iter) {
+		cout << iter->first << "\t" << iter->second << endl;
+	}
+	cout << "flow ack" << endl;
+	for (iter = fidToDsrAddr4fb.begin(); iter != fidToDsrAddr4fb.end();
+			++iter) {
 		cout << iter->first << "\t" << iter->second << endl;
 	}
 	cout << endl;
@@ -876,13 +895,6 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
-		if (strcmp(argv[1], "addFidToDstAddr") == 0) {
-			int key = atoi(argv[2]);
-			int key2 = atoi(argv[3]);
-			addFidToDstAddr(key, key2);
-			return (TCL_OK);
-		}
-
 		if (strcmp(argv[1], "addFlowIdforLF") == 0) {
 			int key = atoi(argv[2]);
 			int key2 = atoi(argv[3]);
@@ -896,6 +908,14 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			int key2 = atoi(argv[3]);
 			int key3 = atoi(argv[4]);
 			addFlowId(key, key2, key3);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "addFidToDstAddr") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			int key3 = atoi(argv[4]);
+			addFidToDstAddr(key, key2, key3);
 			return (TCL_OK);
 		}
 

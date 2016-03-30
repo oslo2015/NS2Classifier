@@ -126,6 +126,7 @@ public:
 	/*
 	 * feedBack== 1  从pathList4fb中查找
 	 * addr 表示该流的目的地至
+	 * /// 这里添加的addr是值 nodeId - hostShift
 	 * */
 	int addFlowId(int fid, int feedBack, int addr);
 
@@ -141,8 +142,8 @@ public:
 	void disableLinkFailure();
 
 	/// 这里添加的dstAddr是值 nodeId - hostShift
-	void addFidToDstAddr(int fid, int dstAddr);
-	int findDstAddr(int fid);
+	void addFidToDstAddr(int fid, int dstAddr, int feedBack);
+	int findDstAddr(int fid, int feedBack);
 	void printFidToDstAddr();
 
 	void transferFlowId();
@@ -201,5 +202,6 @@ private:
 	int podSeqForLFDown;
 
 	INTMAP fidToDsrAddr;
+	INTMAP fidToDsrAddr4fb;
 
 };
