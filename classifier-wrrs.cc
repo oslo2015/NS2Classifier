@@ -649,8 +649,9 @@ void WRRSClassifier::enableLinkFailure(int linkSrcId, int linkDstId) {
 		linkFailureType = CORE_LINK;
 		linkDstSubId = (linkDstId - 0) % eachSide;
 		podSeqForLFDown = (linkSrcId - AGGSHIRFT) / eachSide;
-		transferFlowId();
-
+		if (flowBased) {
+			transferFlowId();
+		}
 	} else if (linkSrcId >= EDGESHIRFT && linkSrcId < hostShift) {
 		linkFailureType = AGG_LINK;
 		linkDstSubId = (linkDstId - AGGSHIRFT) % eachSide;
