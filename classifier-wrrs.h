@@ -28,9 +28,12 @@
 #include <list>
 #include <algorithm>
 
+#include <map>
+
 using namespace std;
 
 typedef list<int> INTLIST;
+typedef map<int, int> INTMAP;
 
 bool findInList(INTLIST l, int key);
 int findMinSizeIndexAmongList(INTLIST * llist, int listNum);
@@ -131,11 +134,13 @@ public:
 	void findNextIdByFid(int fid, int feedBack);	/// 通过c++向tcl传递结果
 	//void setRRSTD(int lastType);
 
-	void getFlowNum();
-
+	void getFlowNum4LF();
 	// 这里规定srcid比dstid大。
 	void enableLinkFailure(int linkSrcId, int linkDstId);
 	void disableLinkFailure();
+
+	static void addFidToDstAddr(int fid, int dstAddr);
+	static int findDstAddr(int fid);
 
 protected:
 
@@ -161,8 +166,8 @@ private:
 
 	static int hostShift;  		/// host addr的偏移量，用于计算podId。(k决定)
 
-	static int AGGSHIRFT;
-	static int EDGESHIRFT;
+	static int AGGSHIRFT;		/// agg node的偏移量
+	static int EDGESHIRFT;		/// edge node的偏移量
 
 	static int hostNumInPod;           	/// (k决定)
 	static int eachSide;                   /// (k决定)
@@ -188,5 +193,7 @@ private:
 	int linkDstId;
 	int linkDstSubId;
 	int podSeqForLFDown;
+
+	static INTMAP fidToDsrAddr;
 
 };
