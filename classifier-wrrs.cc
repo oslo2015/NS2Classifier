@@ -627,7 +627,7 @@ void WRRSClassifier::transferFlowId() {
 		}
 
 		for (iter = pathList4fb[linkDstSubId].begin();
-				iter != pathList4fb[linkDstSubId].end(); ++iter) {
+				iter != pathList4fb[linkDstSubId].end();) {
 			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter, 1))) {
 				addFlowIdforLF(*iter, 1);
 				iter = pathList4fb[linkDstSubId].erase(iter);
