@@ -404,7 +404,7 @@ void WRRSClassifier::initLast() {
 int WRRSClassifier::addFlowId(int fid, int feedBack, int addr) {
 	int findPath = -1;
 	if (false == flowBased) {
-		printf("not flow based but still add fid!");
+		printf("not flow based but still add fid!\n");
 		findPath = -1;
 	} else {
 		bool isExclude = false;
@@ -444,7 +444,7 @@ int WRRSClassifier::addFlowId(int fid, int feedBack, int addr) {
 int WRRSClassifier::addFlowIdforLF(int fid, int feedBack) {
 	int findPath = -1;
 	if (false == flowBased) {
-		printf("not flow based but still add fid!");
+		printf("not flow based but still add fid!\n");
 		findPath = -1;
 	} else {
 		if (1 == feedBack) {
@@ -465,7 +465,7 @@ int WRRSClassifier::addFlowIdforLF(int fid, int feedBack) {
 void WRRSClassifier::removeFlowId(int fid, int feedBack) {
 	int findPath = -1;
 	if (false == flowBased)
-		printf("not flow based but still add fid!");
+		printf("not flow based but still add fid!\n");
 	else if (NULL == pathList || pathListNum <= 0)
 		printf("null pointer or wrong listNum");
 	else {
@@ -484,15 +484,15 @@ void WRRSClassifier::removeFlowId(int fid, int feedBack) {
 // @param feedBack 该包是不是ack包
 int WRRSClassifier::findFidIndexAmongLists(int fid, int feedBack) {
 	if (false == flowBased) {
-		printf("not flow based but still add fid!");
+		printf("not flow based but still add fid!\n");
 		return -1;
 	} else {
 		if (0 == feedBack && (NULL == pathList || pathListNum <= 0)) {
-			printf("null pointer or wrong listNum");
+			printf("null pointer or wrong listNum\n");
 			return -1;
 		}
 		if (1 == feedBack && (NULL == pathList4fb || pathList4fbNum <= 0)) {
-			printf("null pointer or wrong listNum");
+			printf("null pointer or wrong listNum\n");
 			return -1;
 		}
 	}
@@ -841,7 +841,6 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 
 		if (strcmp(argv[1], "setTagSection") == 0) {
 			int key = atoi(argv[2]);
-			//printf("^^^%d\n", key);
 			setTagSection(key);
 			return (TCL_OK);
 		}
