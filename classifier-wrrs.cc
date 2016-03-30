@@ -161,8 +161,7 @@ int WRRSClassifier::addrToPodId(int addr) {
 }
 
 int WRRSClassifier::addrToSubnetId(int addr) {
-	int subnetNum = eachSide;
-	return ((addr) % hostNumInPod) / subnetNum;
+	return ((addr) % hostNumInPod) / eachSide;
 }
 
 int WRRSClassifier::classify(Packet *p) {
@@ -440,6 +439,30 @@ int WRRSClassifier::addFlowId(int fid, int feedBack, int addr) {
 	return findPath;
 }
 
+/**
+ * 用于linkFailure， 将fid添加到对应路径，并避免Linkfailure路径
+ * */
+int WRRSClassifier::addFlowIdforLF(int fid, int feedBack) {
+	int findPath = -1;
+	if (false == flowBased) {
+		printf("not flow based but still add fid!");
+		findPath = -1;
+	} else {
+		if (1 == feedBack) {
+			findPath = addAmongLists(pathList4fb, pathList4fbNum, fid,
+					linkDstSubId);
+		} else {
+			findPath = addAmongLists(pathList, pathListNum, fid, linkDstSubId);
+		}
+		if (-1 == findPath) {
+			printf("flow based path add record wrong! nid = %d\n", NodeId);
+		}
+	}
+//	Tcl& tcl = Tcl::instance();
+//	tcl.resultf("%d", (-1 == findPath) ? -1 : aggShift + findPath);
+	return findPath;
+}
+
 void WRRSClassifier::removeFlowId(int fid, int feedBack) {
 	int findPath = -1;
 	if (false == flowBased)
@@ -489,15 +512,131 @@ void WRRSClassifier::findNextIdByFid(int fid, int feedBack) {
 	}
 }
 
-/// 在linkSrc点使用， 获得该
-void WRRSClassifier::getFlowNum4LF() {
+/**
+ * 对于 linkFailureType == AGG_LINK的情况
+ * 返回符合条件的fid的个数
+ * */
+void WRRSClassifier::getFlowNum4LF(int feedBack) {
 	Tcl& tcl = Tcl::instance();
-	if (isLinkFailure && NodeId == linkSrcId) {
-//	tcl.resultf("%d", );
+	if (isLinkFailure && AGG_LINK == linkFailureType) {
+		if (NodeId == linkSrcId) {
+			if (1 == feedBack)
+				tcl.resultf("%d", pathList4fb[linkDstSubId].size());
+			else
+				tcl.resultf("%d", pathList[linkDstSubId].size());
+		} else {
+			int num = 0;
+			INTLIST::iterator iter;
+			if (1 == feedBack) {
+				for (iter = pathList4fb[linkDstSubId].begin();
+						iter != pathList4fb[linkDstSubId].end(); ++iter) {
+					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+						++num;
+					}
+				}
+			} else {
+				for (iter = pathList[linkDstSubId].begin();
+						iter != pathList[linkDstSubId].end(); ++iter) {
+					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+						++num;
+					}
+				}
+			}
+			tcl.resultf("%d", num);
+		}
 	} else {
 		tcl.resultf("%d", -1);
 	}
+}
 
+void WRRSClassifier::getFlowId4LF(int feedBack) {
+	Tcl& tcl = Tcl::instance();
+	int fid = -1;
+	INTLIST::iterator iter, iter1;
+	if (isLinkFailure && AGG_LINK == linkFailureType) {
+		if (NodeId == linkSrcId) {
+			if (1 == feedBack) {
+				if (pathList4fb[linkDstSubId].size() > 0) {
+					iter = pathList4fb[linkDstSubId].begin();
+					fid = *iter;
+					pathList4fb[linkDstSubId].erase(iter);
+				}
+			} else {
+				if (pathList[linkDstSubId].size() > 0) {
+					iter = pathList[linkDstSubId].begin();
+					fid = *iter;
+					pathList[linkDstSubId].erase(iter);
+				}
+			}
+			tcl.resultf("%d", fid);
+		} else {
+			int num = 0;
+			if (1 == feedBack) {
+				for (iter = pathList4fb[linkDstSubId].begin();
+						iter != pathList4fb[linkDstSubId].end(); ++iter) {
+					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+						fid = *iter;
+						pathList4fb[linkDstSubId].erase(iter);
+						break;
+					}
+				}
+			} else {
+				for (iter = pathList[linkDstSubId].begin();
+						iter != pathList[linkDstSubId].end(); ++iter) {
+					if (podSeqForLFDown == findDstAddr(*iter) / eachSide) {
+						fid = *iter;
+						pathList[linkDstSubId].erase(iter);
+						break;
+					}
+				}
+			}
+			tcl.resultf("%d", fid);
+		}
+	} else {
+		tcl.resultf("%d", -1);
+	}
+}
+
+/**
+ * 在对应的节点上， 在已经分配的路径，如果满足要求，从新分配路径
+ * 对于 linkFailureType == CORE_LINK的情况
+ * */
+void WRRSClassifier::transferFlowId() {
+	INTLIST::iterator iter;
+	if (!isLinkFailure || CORE_LINK != linkFailureType)
+		return;
+	if (NodeId == linkSrcId) {
+		for (iter = pathList[linkDstSubId].begin();
+				iter != pathList[linkDstSubId].end(); ++iter) {
+			addFlowIdforLF(*iter, 0);
+		}
+		pathList[linkDstSubId].clear();
+		for (iter = pathList4fb[linkDstSubId].begin();
+				iter != pathList4fb[linkDstSubId].end(); ++iter) {
+			addFlowIdforLF(*iter, 1);
+		}
+		pathList4fb[linkDstSubId].clear();
+	} else {
+		for (iter = pathList[linkDstSubId].begin();
+				iter != pathList[linkDstSubId].end();) {
+			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter))) {
+				addFlowIdforLF(*iter, 0);
+				iter = pathList[linkDstSubId].erase(iter);
+			} else {
+				++iter;
+			}
+		}
+
+		for (iter = pathList4fb[linkDstSubId].begin();
+				iter != pathList4fb[linkDstSubId].end(); ++iter) {
+			if (podSeqForLFDown == addrToPodId(findDstAddr(*iter))) {
+				addFlowIdforLF(*iter, 1);
+				iter = pathList4fb[linkDstSubId].erase(iter);
+			} else {
+				++iter;
+			}
+		}
+	}
 }
 
 void WRRSClassifier::enableLinkFailure(int linkSrcId, int linkDstId) {
@@ -505,16 +644,20 @@ void WRRSClassifier::enableLinkFailure(int linkSrcId, int linkDstId) {
 	this->linkSrcId = linkSrcId;
 	this->linkDstId = linkDstId;
 
+/// 如果是 CORE_LINK, podSeqForLFDown 代表 podNum
+/// 如果是 AGG_LINK, podSeqForLFDown 代表以 subpod为单位的 seq, 注意， 与 InPodId 不同
 	if (linkSrcId >= AGGSHIRFT && linkSrcId < EDGESHIRFT) {
 		linkFailureType = CORE_LINK;
 		linkDstSubId = (linkDstId - 0) % eachSide;
 		podSeqForLFDown = (linkSrcId - AGGSHIRFT) / eachSide;
+		transferFlowId();
 
 	} else if (linkSrcId >= EDGESHIRFT && linkSrcId < hostShift) {
 		linkFailureType = AGG_LINK;
 		linkDstSubId = (linkDstId - AGGSHIRFT) % eachSide;
 		podSeqForLFDown = (linkSrcId - EDGESHIRFT);
 	}
+
 }
 
 void WRRSClassifier::disableLinkFailure() {
@@ -531,6 +674,14 @@ int WRRSClassifier::findDstAddr(int fid) {
 		return iter->second;
 	}
 	return -1;
+}
+
+void WRRSClassifier::printFidToDstAddr() {
+	INTMAP::iterator iter;
+	for (iter = fidToDsrAddr.begin(); iter != fidToDsrAddr.end(); ++iter) {
+		cout << iter->first << "\t" << iter->second << endl;
+	}
+	cout << endl;
 }
 
 void WRRSClassifier::printNodeInfo() {
@@ -646,8 +797,8 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			return (TCL_OK);
 		}
 
-		if (strcmp(argv[1], "getFlowNum4LF") == 0) {
-			getFlowNum4LF();
+		if (strcmp(argv[1], "printFidToDstAddr") == 0) {
+			printFidToDstAddr();
 			return (TCL_OK);
 		}
 
@@ -679,6 +830,12 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 		if (strcmp(argv[1], "setNodeType") == 0) {
 			int key = atoi(argv[2]);
 			setNodeType(key);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "getFlowNum4LF") == 0) {
+			int key = atoi(argv[2]);
+			getFlowNum4LF(key);
 			return (TCL_OK);
 		}
 
@@ -716,6 +873,20 @@ int WRRSClassifier::command(int argc, const char* const * argv) {
 			int key = atoi(argv[2]);
 			int key2 = atoi(argv[3]);
 			enableLinkFailure(key, key2);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "addFidToDstAddr") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			addFidToDstAddr(key, key2);
+			return (TCL_OK);
+		}
+
+		if (strcmp(argv[1], "addFlowIdforLF") == 0) {
+			int key = atoi(argv[2]);
+			int key2 = atoi(argv[3]);
+			addFlowIdforLF(key, key2);
 			return (TCL_OK);
 		}
 

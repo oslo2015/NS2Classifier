@@ -134,13 +134,19 @@ public:
 	void findNextIdByFid(int fid, int feedBack);	/// 通过c++向tcl传递结果
 	//void setRRSTD(int lastType);
 
-	void getFlowNum4LF();
+	void getFlowNum4LF(int feedBack);
+	void getFlowId4LF(int feedBack);
 	// 这里规定srcid比dstid大。
 	void enableLinkFailure(int linkSrcId, int linkDstId);
 	void disableLinkFailure();
 
+	/// 这里添加的dstAddr是值 nodeId - hostShift
 	static void addFidToDstAddr(int fid, int dstAddr);
 	static int findDstAddr(int fid);
+	static void printFidToDstAddr();
+
+	void transferFlowId();
+	int addFlowIdforLF(int fid, int feedBack);
 
 protected:
 
