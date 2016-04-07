@@ -474,7 +474,9 @@ void WRRSClassifier::removeFlowId(int fid, int feedBack) {
 		else
 			findPath = removeAmongLists(pathList, pathListNum, fid);
 		if (-1 == findPath) {
-			printf("flow based path remove record wrong! nid = %d\n", NodeId);
+			printf(
+					"flow based path remove record wrong! nid = %d, fid = %d, feedBack = %d\n",
+					NodeId, fid, feedBack);
 		}
 	}
 	Tcl& tcl = Tcl::instance();
@@ -548,6 +550,9 @@ void WRRSClassifier::getFlowNum4LF(int feedBack) {
 	}
 }
 
+/** 向tcl返回相应的fid后，将此fid删除。
+ * 所以不用在tcl端，主动removeFlowId
+ * */
 void WRRSClassifier::getFlowId4LF(int feedBack) {
 	Tcl& tcl = Tcl::instance();
 	int fid = -1;
