@@ -409,11 +409,19 @@ int WRRSClassifier::addFlowId(int fid, int feedBack, int addr) {
 	} else {
 		bool isExclude = false;
 		if (isLinkFailure) {
-			if ((CORE_LINK == linkFailureType
-					&& podSeqForLFDown == addrToPodId(addr))
-					|| (AGG_LINK == linkFailureType
-							&& podSeqForLFDown == addr / eachSide)) {
-				isExclude = true;
+			if (CORE_LINK == linkFailureType) {
+				if (NodeId == linkSrcId) {
+					isExclude = true;
+				} else if (podSeqForLFDown == addrToPodId(addr)) {
+					isExclude = true;
+				}
+			}
+			if (AGG_LINK == linkFailureType) {
+				if (NodeId == linkSrcId) {
+					isExclude = true;
+				} else if (podSeqForLFDown == addr / eachSide) {
+					isExclude = true;
+				}
 			}
 		}
 		if (1 == feedBack) {
@@ -431,6 +439,13 @@ int WRRSClassifier::addFlowId(int fid, int feedBack, int addr) {
 		}
 		if (-1 == findPath) {
 			printf("flow based path add record wrong! nid = %d\n", NodeId);
+		}
+		if (isLinkFailure) {
+			if (NodeId == linkSrcId && aggShift + findPath == linkDstId) {
+				printf(
+						"addFlowId on linkFailure. nid = %d, fid = %d, feedBack = %d, addr = %d, lfSrc = %d, lfDst = %d\n",
+						NodeId, fid, feedBack, addr, linkSrcId, linkDstId);
+			}
 		}
 	}
 	Tcl& tcl = Tcl::instance();
